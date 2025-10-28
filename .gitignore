@@ -1,0 +1,32 @@
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local uploads (don't commit user uploads)
+projects/*/
+uploads/
+static/uploads/
+
+# Keep project structure but not content
+!projects/.gitkeep
+!uploads/.gitkeep
+!static/uploads/.gitkeep
+
+# Local config
+.env

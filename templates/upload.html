@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <title>პროექტის ატვირთვა</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-4">
+    <h1>ახალი პროექტის ატვირთვა</h1>
+    <form method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label class="form-label">სათაური</label>
+            <input type="text" name="title" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">აღწერა</label>
+            <textarea name="description" class="form-control" rows="12" required></textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">3D viewer (iframe ან URL)</label>
+            <input type="text" name="viewer3d" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Loading ვიდეო URL (3D viewer-ის ჩატვირთვამდე)</label>
+            <input type="text" name="loading_video" class="form-control" placeholder="მაგ: https://example.com/loading-video.mp4">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Loading მუსიკა URL (3D viewer-ის ჩატვირთვამდე)</label>
+            <input type="text" name="loading_audio" class="form-control" placeholder="მაგ: https://example.com/loading-music.mp3">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">ადგილმდებარეობა (Latitude)</label>
+            <input type="text" name="latitude" class="form-control" placeholder="მაგ: 41.7151">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">ადგილმდებარეობა (Longitude)</label>
+            <input type="text" name="longitude" class="form-control" placeholder="მაგ: 44.8271">
+        </div>
+        
+        <!-- Categories Section -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h5>ტიპი</h5>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="type_categories" value="ეკლესია" id="type_church">
+                    <label class="form-check-label" for="type_church">ეკლესია</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="type_categories" value="ციხე" id="type_fortress">
+                    <label class="form-check-label" for="type_fortress">ციხე</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="type_categories" value="მუზეუმი" id="type_museum">
+                    <label class="form-check-label" for="type_museum">მუზეუმი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="type_categories" value="ძეგლი" id="type_monument">
+                    <label class="form-check-label" for="type_monument">ძეგლი</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h5>პერიოდი</h5>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="ქრისტეშობამდე" id="period_bc">
+                    <label class="form-check-label" for="period_bc">ქრისტეშობამდე</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="I-X საუკუნე" id="period_1_10">
+                    <label class="form-check-label" for="period_1_10">I-X საუკუნე</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="XI-XVII საუკუნე" id="period_11_17">
+                    <label class="form-check-label" for="period_11_17">XI-XVII საუკუნე</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1801-1918 წელი" id="period_1801_1918">
+                    <label class="form-check-label" for="period_1801_1918">1801-1918 წელი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1918-21 წელი" id="period_1918_21">
+                    <label class="form-check-label" for="period_1918_21">1918-21 წელი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1922-53 წელი" id="period_1922_53">
+                    <label class="form-check-label" for="period_1922_53">1922-53 წელი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1954-91 წელი" id="period_1954_91">
+                    <label class="form-check-label" for="period_1954_91">1954-91 წელი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1991 + წელი" id="period_1991_plus">
+                    <label class="form-check-label" for="period_1991_plus">1991 + წელი</label>
+                </div>
+            </div>
+        </div>
+        
+        <h4>პროექტის ინფორმაცია</h4>
+        <div id="projectInfo">
+            <div class="mb-2 info-pair">
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="text" name="info_key_0" class="form-control" placeholder="ველის სახელი (მაგ: არქიტექტორი)">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" name="info_value_0" class="form-control" placeholder="მნიშვნელობა (მაგ: ქუჩუ დგებუაძე)">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-danger btn-sm remove-info">-</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button type="button" id="addInfo" class="btn btn-secondary btn-sm mb-3">+ ახალი ველის დამატება</button>
+        <script>
+        let infoCount = 1;
+        document.getElementById('addInfo').addEventListener('click', function() {
+            const container = document.getElementById('projectInfo');
+            const div = document.createElement('div');
+            div.className = 'mb-2 info-pair';
+            div.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="text" name="info_key_${infoCount}" class="form-control" placeholder="ველის სახელი">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" name="info_value_${infoCount}" class="form-control" placeholder="მნიშვნელობა">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-danger btn-sm remove-info">-</button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            infoCount++;
+        });
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-info')) {
+                e.target.closest('.info-pair').remove();
+            }
+        });
+        </script>
+        <div class="mb-3">
+            <label class="form-label">ფაილები (სურათები, docx, html)</label>
+            <input type="file" name="files" class="form-control" multiple required id="fileInput">
+        </div>
+        <div id="captionsContainer"></div>
+        <script>
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const container = document.getElementById('captionsContainer');
+            container.innerHTML = '';
+            Array.from(e.target.files).forEach((file, idx) => {
+                if (file.type.startsWith('image/')) {
+                    const div = document.createElement('div');
+                    div.className = 'mb-2';
+                    div.innerHTML = `<label>სურათის აღწერა (${file.name}):</label><input type="text" name="caption_${idx}" class="form-control" placeholder="სურათის აღწერა">`;
+                    container.appendChild(div);
+                }
+            });
+        });
+        </script>
+        <button type="submit" class="btn btn-primary">ატვირთვა</button>
+        <a href="/admin/panel" class="btn btn-link">უკან</a>
+    </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,202 @@
+[
+  {
+    "id": "project_1",
+    "title": "გელათი",
+    "main_image": "bagrati.PNG",
+    "other_images": [
+      {
+        "file": "bagrati.PNG",
+        "caption": "გწსერგწ"
+      },
+      {
+        "file": "eye.png",
+        "caption": "წეფწეფრ"
+      },
+      {
+        "file": "mason-symbol-icon-34.jpg",
+        "caption": "წეფწეფ"
+      },
+      {
+        "file": "metexii.PNG",
+        "caption": "წეფწეფ"
+      },
+      {
+        "file": "narikala_1.jpg",
+        "caption": "წერფწეფწ"
+      },
+      {
+        "file": "narikala_2.jpg",
+        "caption": "ეფწეფწე"
+      },
+      {
+        "file": "vajas_dzegli.PNG",
+        "caption": "ფწწწწწწწწწ"
+      },
+      {
+        "file": "vake.PNG",
+        "caption": "ეეეეეეე"
+      },
+      {
+        "file": "ye.PNG",
+        "caption": "ტტტტტტტტტ"
+      },
+      {
+        "file": "zgvis_eklesia.PNG",
+        "caption": "55555555"
+      },
+      {
+        "file": "PNG",
+        "caption": "2222222222"
+      }
+    ],
+    "viewer3D": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/09.03VAKIS%20dzegli/index.html",
+    "description_file": "description.txt",
+    "folder": "project_1",
+    "latitude": "",
+    "longitude": ""
+  },
+  {
+    "id": "project_2",
+    "title": "ნარიყალა და იგი სიმონ",
+    "main_image": "PNG",
+    "other_images": [
+      {
+        "file": "bagrati.PNG",
+        "caption": "სურათი და რა,მე ერთია"
+      },
+      {
+        "file": "eye.png",
+        "caption": "კსწჯდჰაჯსფდ  ლ;ჯწჰდნ ლკაჯსნჰდ ლაწჯდ ;  ჰწ;ლდჯკნ წდა 122164 ა დსკჯბასლკ ჯდ ჰბაწლკდ   კაჯსბჰდ კაჯჰწ"
+      },
+      {
+        "file": "mason-symbol-icon-34.jpg",
+        "caption": "ქანაე "
+      },
+      {
+        "file": "metexii.PNG",
+        "caption": "ასდასფდაფ"
+      },
+      {
+        "file": "narikala_1.jpg",
+        "caption": "ასდასდა"
+      },
+      {
+        "file": "narikala_2.jpg",
+        "caption": "ასფდასფასდფგსფ"
+      },
+      {
+        "file": "vajas_dzegli.PNG",
+        "caption": "ასეფ სედფ სეფას"
+      },
+      {
+        "file": "vake.PNG",
+        "caption": "ეფ ასდსდსფ სეფ"
+      },
+      {
+        "file": "ye.PNG",
+        "caption": "საეფ სეფსეფასდ ასდ ა"
+      },
+      {
+        "file": "zgvis_eklesia.PNG",
+        "caption": " ასეფ აეფასედფსდ ასდ "
+      },
+      {
+        "file": "PNG",
+        "caption": "დასდას"
+      }
+    ],
+    "viewer3D": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/09.03VAKIS%20dzegli/index.html",
+    "description_file": "description.txt",
+    "folder": "project_2",
+    "latitude": "41.7151",
+    "longitude": "44.8271",
+    "architect": "სდგსდეგს",
+    "dendrologist": "ეგფსწეფ",
+    "artist": "საეფსაეფ",
+    "sculptor": "საეფსაეფ",
+    "design_year": "ასეფასეფ",
+    "construction_year": "აეფასეფ",
+    "status": "აეფაეფ",
+    "function": "აეფაეფა",
+    "original_name": "ეფაეფაე",
+    "current_name": "ფაეფაეფ",
+    "condition": "აეფაეფ",
+    "address": "აეფა",
+    "project_info": {
+      "არქიტექტორი": "ვახოიე",
+      "დამრტყმელი პურიმჭამელი": "გიოია კეპულა"
+    },
+    "type_categories": [
+      "ეკლესია",
+      "ციხე",
+      "მუზეუმი",
+      "ძეგლი"
+    ],
+    "period_categories": [
+      "ქრისტეშობამდე",
+      "I-X საუკუნე",
+      "XI-XVII საუკუნე",
+      "1801-1918 წელი",
+      "1918-21 წელი",
+      "1922-53 წელი",
+      "1954-91 წელი",
+      "1991 + წელი"
+    ],
+    "loading_video": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/videoebi/videoebi/vashlis%20gamyidvelo!.mp4",
+    "loading_audio": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/videoebi/musics/mus.m4a"
+  },
+  {
+    "id": "project_3",
+    "title": "მეტეხი",
+    "main_image": "metexii.PNG",
+    "other_images": [
+      {
+        "file": "bagrati.PNG",
+        "caption": ""
+      },
+      {
+        "file": "eye.png",
+        "caption": ""
+      },
+      {
+        "file": "mason-symbol-icon-34.jpg",
+        "caption": ""
+      },
+      {
+        "file": "metexii.PNG",
+        "caption": ""
+      },
+      {
+        "file": "narikala_1.jpg",
+        "caption": ""
+      },
+      {
+        "file": "narikala_2.jpg",
+        "caption": ""
+      },
+      {
+        "file": "vajas_dzegli.PNG",
+        "caption": ""
+      },
+      {
+        "file": "vake.PNG",
+        "caption": ""
+      },
+      {
+        "file": "ye.PNG",
+        "caption": ""
+      },
+      {
+        "file": "zgvis_eklesia.PNG",
+        "caption": ""
+      },
+      {
+        "file": "PNG",
+        "caption": ""
+      }
+    ],
+    "viewer3D": "",
+    "description_file": "description.txt",
+    "folder": "project_3"
+  }
+]

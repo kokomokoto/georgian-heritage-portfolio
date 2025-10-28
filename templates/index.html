@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block title %}პროექტების პორტფოლიო{% endblock %}
+
+{% block filter_button %}
+<button class="btn btn-outline-light" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterSidepanel" aria-controls="filterSidepanel">
+    <i class="bi bi-funnel"></i> ფილტრები
+</button>
+{% endblock %}
+
+{% block filters %}
+<!-- Category Filters moved to sidepanel -->
+<div class="mb-4">
+    <h6 class="fw-bold text-primary mb-3">ტიპი</h6>
+    <div class="row">
+        <div class="col-12">
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="ეკლესია" id="filter_church" data-type="type">
+                <label class="form-check-label" for="filter_church">ეკლესია</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="ციხე" id="filter_fortress" data-type="type">
+                <label class="form-check-label" for="filter_fortress">ციხე</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="მუზეუმი" id="filter_museum" data-type="type">
+                <label class="form-check-label" for="filter_museum">მუზეუმი</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="ძეგლი" id="filter_monument" data-type="type">
+                <label class="form-check-label" for="filter_monument">ძეგლი</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mb-4">
+    <h6 class="fw-bold text-primary mb-3">პერიოდი</h6>
+    <div class="row">
+        <div class="col-12">
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="ქრისტეშობამდე" id="filter_bc" data-type="period">
+                <label class="form-check-label" for="filter_bc">ქრისტეშობამდე</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="I-X საუკუნე" id="filter_1_10" data-type="period">
+                <label class="form-check-label" for="filter_1_10">I-X საუკუნე</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="XI-XVII საუკუნე" id="filter_11_17" data-type="period">
+                <label class="form-check-label" for="filter_11_17">XI-XVII საუკუნე</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="1801-1918 წელი" id="filter_1801_1918" data-type="period">
+                <label class="form-check-label" for="filter_1801_1918">1801-1918</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="1918-21 წელი" id="filter_1918_21" data-type="period">
+                <label class="form-check-label" for="filter_1918_21">1918-21</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="1922-53 წელი" id="filter_1922_53" data-type="period">
+                <label class="form-check-label" for="filter_1922_53">1922-53</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="1954-91 წელი" id="filter_1954_91" data-type="period">
+                <label class="form-check-label" for="filter_1954_91">1954-91</label>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input filter-checkbox" type="checkbox" value="1991 + წელი" id="filter_1991_plus" data-type="period">
+                <label class="form-check-label" for="filter_1991_plus">1991+</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-grid gap-2">
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="clearFilters">
+        ყველა ფილტრის გასუფთავება
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+    <form method="get" class="mb-3">
+        <input type="text" id="searchInput" name="q" value="{{ q }}" placeholder="ძებნა სათაურით" class="form-control" autocomplete="off" />
+    </form>
+    
+    <div style="overflow-x:auto;">
+        <div id="projectsContainer" style="display:flex; flex-wrap:nowrap; gap:24px;">
+        {% for project in projects %}
+        <div class="project-card clickable-card" style="min-width:320px; max-width:340px; flex:0 0 320px; cursor: pointer;" 
+             data-type-categories="{{ project.type_categories|join(',') if project.type_categories else '' }}"
+             data-period-categories="{{ project.period_categories|join(',') if project.period_categories else '' }}"
+             onclick="window.location.href='/project/{{ project.id }}'">
+            <div class="card h-100">
+                {% if project.main_image %}
+                <img src="/projects/{{ project.folder }}/{{ project.main_image }}" class="card-img-top" alt="{{ project.title }}">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ project.title }}</h5>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+    {% block scripts %}
+    <script>
+    let allProjects = document.querySelectorAll('.project-card');
+    
+    // ლაივ ძებნა AJAX-ით
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const q = this.value;
+        fetch(`/live_search?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('projectsContainer');
+                container.innerHTML = '';
+                if (data.projects.length === 0) {
+                    container.innerHTML = '<div class="text-center">შედეგი ვერ მოიძებნა</div>';
+                    return;
+                }
+                data.projects.forEach(project => {
+                    const col = document.createElement('div');
+                    col.className = 'project-card clickable-card';
+                    col.style.cssText = 'min-width:320px; max-width:340px; flex:0 0 320px; cursor: pointer;';
+                    col.setAttribute('data-type-categories', project.type_categories ? project.type_categories.join(',') : '');
+                    col.setAttribute('data-period-categories', project.period_categories ? project.period_categories.join(',') : '');
+                    col.onclick = () => window.location.href = `/project/${project.id}`;
+                    
+                    let imgHtml = project.main_image ? `<img src="/projects/${project.folder}/${project.main_image}" class="card-img-top" alt="${project.title}">` : '';
+                    
+                    col.innerHTML = `<div class="card h-100">${imgHtml}<div class="card-body"><h5 class="card-title">${project.title}</h5></div></div>`;
+                    container.appendChild(col);
+                });
+                
+                // Update allProjects reference
+                allProjects = document.querySelectorAll('.project-card');
+                // Apply current filters
+                applyFilters();
+            });
+    });
+    
+    // Category filters
+    document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', applyFilters);
+    });
+    
+    // Clear filters functionality
+    document.getElementById('clearFilters').addEventListener('click', function() {
+        document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        applyFilters();
+    });
+    
+    function applyFilters() {
+        const selectedTypes = Array.from(document.querySelectorAll('.filter-checkbox[data-type="type"]:checked')).map(cb => cb.value);
+        const selectedPeriods = Array.from(document.querySelectorAll('.filter-checkbox[data-type="period"]:checked')).map(cb => cb.value);
+        
+        allProjects.forEach(project => {
+            const projectTypes = project.getAttribute('data-type-categories').split(',').filter(t => t);
+            const projectPeriods = project.getAttribute('data-period-categories').split(',').filter(p => p);
+            
+            let showProject = true;
+            
+            // If any type filters are selected, project must have at least one matching type
+            if (selectedTypes.length > 0) {
+                showProject = showProject && selectedTypes.some(type => projectTypes.includes(type));
+            }
+            
+            // If any period filters are selected, project must have at least one matching period
+            if (selectedPeriods.length > 0) {
+                showProject = showProject && selectedPeriods.some(period => projectPeriods.includes(period));
+            }
+            
+            project.style.display = showProject ? 'block' : 'none';
+        });
+    }
+    </script>
+    {% endblock %}

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <title>პროექტის რედაქტირება</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-4">
+    <h1>პროექტის რედაქტირება</h1>
+    <form method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label class="form-label">სათაური</label>
+            <input type="text" name="title" class="form-control" value="{{ project.title }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">აღწერა</label>
+            <textarea name="description" class="form-control" rows="30" required>{{ description }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">3D viewer (iframe ან URL)</label>
+            <input type="text" name="viewer3d" class="form-control" value="{{ project.viewer3D }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Loading ვიდეო URL (3D viewer-ის ჩატვირთვამდე)</label>
+            <input type="text" name="loading_video" class="form-control" value="{{ project.loading_video|default('') }}" placeholder="მაგ: https://example.com/loading-video.mp4">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Loading მუსიკა URL (3D viewer-ის ჩატვირთვამდე)</label>
+            <input type="text" name="loading_audio" class="form-control" value="{{ project.loading_audio|default('') }}" placeholder="მაგ: https://example.com/loading-music.mp3">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">ადგილმდებარეობა (Latitude)</label>
+            <input type="text" name="latitude" class="form-control" value="{{ project.latitude|default('') }}" placeholder="მაგ: 41.7151">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">ადგილმდებარეობა (Longitude)</label>
+            <input type="text" name="longitude" class="form-control" value="{{ project.longitude|default('') }}" placeholder="მაგ: 44.8271">
+        </div>
+        
+        <!-- Categories Section -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h5>ტიპი</h5>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="type_categories" value="ეკლესია" id="type_church" 
+                           {% if project.type_categories and 'ეკლესია' in project.type_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="type_church">ეკლესია</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="type_categories" value="ციხე" id="type_fortress"
+                           {% if project.type_categories and 'ციხე' in project.type_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="type_fortress">ციხე</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="type_categories" value="მუზეუმი" id="type_museum"
+                           {% if project.type_categories and 'მუზეუმი' in project.type_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="type_museum">მუზეუმი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="type_categories" value="ძეგლი" id="type_monument"
+                           {% if project.type_categories and 'ძეგლი' in project.type_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="type_monument">ძეგლი</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h5>პერიოდი</h5>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="ქრისტეშობამდე" id="period_bc"
+                           {% if project.period_categories and 'ქრისტეშობამდე' in project.period_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="period_bc">ქრისტეშობამდე</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="I-X საუკუნე" id="period_1_10"
+                           {% if project.period_categories and 'I-X საუკუნე' in project.period_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="period_1_10">I-X საუკუნე</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="XI-XVII საუკუნე" id="period_11_17"
+                           {% if project.period_categories and 'XI-XVII საუკუნე' in project.period_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="period_11_17">XI-XVII საუკუნე</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1801-1918 წელი" id="period_1801_1918"
+                           {% if project.period_categories and '1801-1918 წელი' in project.period_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="period_1801_1918">1801-1918 წელი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1918-21 წელი" id="period_1918_21"
+                           {% if project.period_categories and '1918-21 წელი' in project.period_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="period_1918_21">1918-21 წელი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1922-53 წელი" id="period_1922_53"
+                           {% if project.period_categories and '1922-53 წელი' in project.period_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="period_1922_53">1922-53 წელი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1954-91 წელი" id="period_1954_91"
+                           {% if project.period_categories and '1954-91 წელი' in project.period_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="period_1954_91">1954-91 წელი</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="period_categories" value="1991 + წელი" id="period_1991_plus"
+                           {% if project.period_categories and '1991 + წელი' in project.period_categories %}checked{% endif %}>
+                    <label class="form-check-label" for="period_1991_plus">1991 + წელი</label>
+                </div>
+            </div>
+        </div>
+        
+        <h4>პროექტის ინფორმაცია</h4>
+        <div id="projectInfo">
+            {% if project.project_info %}
+                {% for key, value in project.project_info.items() %}
+                <div class="mb-2 info-pair">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" name="info_key_{{ loop.index0 }}" class="form-control" value="{{ key }}" placeholder="ველის სახელი">
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" name="info_value_{{ loop.index0 }}" class="form-control" value="{{ value }}" placeholder="მნიშვნელობა">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-danger btn-sm remove-info">-</button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="mb-2 info-pair">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" name="info_key_0" class="form-control" placeholder="ველის სახელი">
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" name="info_value_0" class="form-control" placeholder="მნიშვნელობა">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-danger btn-sm remove-info">-</button>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <button type="button" id="addInfo" class="btn btn-secondary btn-sm mb-3">+ ახალი ველის დამატება</button>
+        <script>
+        let infoCount = {{ project.project_info|length if project.project_info else 1 }};
+        document.getElementById('addInfo').addEventListener('click', function() {
+            const container = document.getElementById('projectInfo');
+            const div = document.createElement('div');
+            div.className = 'mb-2 info-pair';
+            div.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="text" name="info_key_${infoCount}" class="form-control" placeholder="ველის სახელი">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" name="info_value_${infoCount}" class="form-control" placeholder="მნიშვნელობა">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-danger btn-sm remove-info">-</button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            infoCount++;
+        });
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-info')) {
+                e.target.closest('.info-pair').remove();
+            }
+        });
+        </script>
+        <div class="mb-3">
+            <label class="form-label">მთავარი ფოტო:</label>
+            <div class="mb-2">
+                {% if project.main_image %}
+                    <img src="/projects/{{ project.folder }}/{{ project.main_image }}" width="80" class="me-2">
+                    <input type="radio" name="main_image_select" value="{{ project.main_image }}" {% if project.main_image %}checked{% endif %}> ეს არის მთავარი ფოტო
+                {% endif %}
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">სხვა სურათები:</label>
+            <div id="existingImages">
+            {% for img in project.other_images %}
+                <div class="mb-2 align-items-center d-flex gap-2">
+                    {% if img.file %}
+                        <img src="/projects/{{ project.folder }}/{{ img.file }}" width="80" class="me-2">
+                        <input type="radio" name="main_image_select" value="{{ img.file }}" {% if img.file == project.main_image %}checked{% endif %}>
+                        <span class="me-2">მთავარ ფოტოდ</span>
+                        <input type="text" name="caption_existing_{{ loop.index0 }}" class="form-control d-inline-block w-auto" value="{{ img.caption }}" placeholder="სურათის აღწერა">
+                        <input type="hidden" name="existing_file_{{ loop.index0 }}" value="{{ img.file }}">
+                    {% else %}
+                        <img src="/projects/{{ project.folder }}/{{ img }}" width="80" class="me-2">
+                        <input type="radio" name="main_image_select" value="{{ img }}" {% if img == project.main_image %}checked{% endif %}>
+                        <span class="me-2">მთავარ ფოტოდ</span>
+                        <input type="text" name="caption_existing_{{ loop.index0 }}" class="form-control d-inline-block w-auto" value="" placeholder="სურათის აღწერა">
+                        <input type="hidden" name="existing_file_{{ loop.index0 }}" value="{{ img }}">
+                    {% endif %}
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">ახალი ფაილების დამატება (არასავალდებულო)</label>
+            <input type="file" name="files" class="form-control" multiple>
+        </div>
+        <button type="submit" class="btn btn-primary">შენახვა</button>
+        <a href="/admin/panel" class="btn btn-link">უკან</a>
+    </form>
+</div>
+</body>
+</html>

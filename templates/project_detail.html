@@ -1,0 +1,793 @@
+{% extends 'base.html' %}
+{% block title %}{{ project.title }}{% endblock %}
+{% block head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .viewer-wrap{margin-bottom:20px;}
+        .loading-container {
+            position: relative;
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        /* Loading container responsive heights - same as 3D viewer */
+        /* Desktop */
+        @media (min-width: 768px) {
+            .loading-container {
+                height: 60vh;
+                min-height: 400px;
+                max-height: 600px;
+            }
+        }
+        
+        /* Mobile */
+        @media (max-width: 767px) {
+            .loading-container {
+                height: 50vh;
+                min-height: 300px;
+                max-height: 400px;
+            }
+        }
+        
+        /* Large screens */
+        @media (min-width: 1200px) {
+            .loading-container {
+                height: 65vh;
+                max-height: 700px;
+            }
+        }
+        .loading-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            z-index: 2;
+        }
+        .loading-text {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .loading-container:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+        .loading-spinner {
+            border: 4px solid #ffffff30;
+            border-top: 4px solid #ffffff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden { display: none !important; }
+        
+        /* Responsive 3D Viewer */
+        .viewer-iframe {
+            width: 100%;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        /* Desktop: 16:9 aspect ratio */
+        @media (min-width: 768px) {
+            .viewer-iframe {
+                height: 60vh; /* 60% of viewport height */
+                min-height: 400px;
+                max-height: 600px;
+            }
+        }
+        
+        /* Mobile: 4:3 aspect ratio for better mobile experience */
+        @media (max-width: 767px) {
+            .viewer-iframe {
+                height: 50vh; /* 50% of viewport height on mobile */
+                min-height: 300px;
+                max-height: 400px;
+            }
+        }
+        
+        /* Large screens: limit maximum size */
+        @media (min-width: 1200px) {
+            .viewer-iframe {
+                height: 65vh;
+                max-height: 700px;
+            }
+        }
+        
+        /* Project title styling */
+        .project-title {
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 300;
+            color: #333;
+            font-size: 2.5rem;
+        }
+        
+        @media (max-width: 767px) {
+            .project-title {
+                font-size: 1.8rem;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h1 class="project-title">{{ project.title }}</h1>
+    <div class="viewer-wrap">
+        {% if project.viewer3D %}
+            <!-- Loading Container with Video/Music -->
+            <div id="loadingContainer" class="loading-container">
+                {% if project.loading_video %}
+                    <video id="loadingVideo" class="loading-video" autoplay muted loop>
+                        <source src="{{ project.loading_video }}" type="video/mp4">
+                    </video>
+                {% endif %}
+                {% if project.loading_audio %}
+                    <audio id="loadingAudio" autoplay muted loop>
+                        <source src="{{ project.loading_audio }}" type="audio/mpeg">
+                    </audio>
+                {% endif %}
+                <div class="loading-overlay">
+                    <div class="loading-text" id="loadingText">3D მოდელი იტვირთება...</div>
+                    <div class="loading-spinner"></div>
+                    <div style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;" id="loadingStatus">
+                        მოდელი იტვირთება...
+                    </div>
+                    <div style="margin-top: 20px; font-size: 0.8rem; opacity: 0.7; color: #fff;">
+                        💡 3D მოდელის ნახვისთვის დააჭირეთ ეკრანზე ან მოიცადეთ 30 წამი
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 3D Viewer (initially hidden) -->
+            <div id="viewer3D" class="hidden">
+                {% if project.viewer3D.startswith('<iframe') %}
+                    {{ project.viewer3D|safe }}
+                {% else %}
+                    <iframe src="{{ project.viewer3D }}" class="viewer-iframe" 
+                            allowfullscreen webkitallowfullscreen mozallowfullscreen 
+                            allow="xr-spatial-tracking; gyroscope; accelerometer">
+                    </iframe>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+    {% if project.latitude and project.longitude %}
+    <h4>ადგილმდებარეობა რუკაზე</h4>
+    <div id="map" style="height:350px; margin-bottom:20px;"></div>
+    {% endif %}
+    <div class="row">
+        <div class="col-md-8">
+            <h4>აღწერა</h4>
+            <div class="project-description">{{ description }}</div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>პროექტის ინფორმაცია</h5>
+                </div>
+                <div class="card-body">
+                    {% if project.project_info %}
+                        {% for key, value in project.project_info.items() %}
+                        {% if value %}
+                        <p><strong>{{ key }}:</strong> {{ value }}</p>
+                        {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">ინფორმაცია არ არის მითითებული</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <h4>სხვა სურათები</h4>
+    <div class="row">
+        {% for img in project.other_images %}
+        {% set fname = img.file if img.file is defined else img %}
+        {% if fname and fname|lower not in ['png', ''] %}
+        <div class="col-md-3 mb-2">
+            {% if img.file %}
+            <a href="/projects/{{ project.folder }}/{{ img.file }}" class="glightbox" data-gallery="gallery1" data-title="{{ img.caption }}">
+                <img src="/projects/{{ project.folder }}/{{ img.file }}" class="img-thumbnail" alt="სურათი">
+            </a>
+            <div class="text-center small text-muted mt-1">{{ img.caption }}</div>
+            {% else %}
+            <a href="/projects/{{ project.folder }}/{{ img }}" class="glightbox" data-gallery="gallery1">
+                <img src="/projects/{{ project.folder }}/{{ img }}" class="img-thumbnail" alt="სურათი">
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    <style>
+    .fb-comments { 
+        background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+        max-width: 100%; width: 100%;
+    }
+    .fb-comment { 
+        display: flex; margin-bottom: 16px; 
+    }
+    .fb-comment-avatar { 
+        width: 32px; height: 32px; border-radius: 50%; background: #4267B2; 
+        display: flex; align-items: center; justify-content: center; color: white; 
+        font-weight: bold; margin-right: 8px; flex-shrink: 0; 
+    }
+    .fb-comment-body { 
+        flex: 1; 
+    }
+    .fb-comment-content { 
+        background: #f0f2f5; border-radius: 16px; padding: 8px 12px; display: inline-block; 
+        max-width: calc(100% - 50px); word-wrap: break-word; line-height: 1.34; 
+    }
+    .fb-comment-content:hover {
+        background: #e4e6ea;
+    }
+    .fb-comment-media { 
+        margin-top: 8px; 
+    }
+    .fb-comment-media img { 
+        max-width: 300px; border-radius: 8px; 
+    }
+    .fb-comment-actions { 
+        font-size: 12px; margin-top: 4px; 
+    }
+    .fb-comment-actions a { 
+        color: #65676b; text-decoration: none; margin-right: 12px; font-weight: 600; 
+    }
+    .fb-comment-actions a:hover { 
+        text-decoration: underline; 
+    }
+    .fb-replies { 
+        margin-left: 40px; margin-top: 8px; 
+    }
+    .fb-compose { 
+        display: flex; align-items: flex-start; margin-top: 16px; 
+    }
+    .fb-compose-input { 
+        flex: 1; border: 1px solid #ccd0d5; border-radius: 20px; padding: 12px 50px 12px 16px; 
+        resize: none; outline: none; font-family: inherit; position: relative; 
+        background: #f0f2f5; transition: all 0.2s; min-height: 40px; width: 100%;
+    }
+    .fb-compose-input:focus {
+        border-color: #1877f2; background: #fff; box-shadow: 0 0 0 2px rgba(24,119,242,0.2);
+    }
+    .fb-compose-actions { 
+        position: absolute; right: 8px; top: 50%; transform: translateY(-50%); 
+        display: flex; align-items: center; 
+    }
+    .fb-compose-container { 
+        position: relative; flex: 1; margin-left: 8px; width: 100%;
+    }
+    .fb-icon { 
+        width: 20px; height: 20px; margin-left: 8px; cursor: pointer; opacity: 0.6; 
+        transition: opacity 0.2s; 
+    }
+    .fb-icon:hover { 
+        opacity: 1; 
+    }
+    .fb-drop-zone { 
+        border: 2px dashed #ccd0d5; border-radius: 8px; padding: 20px; text-align: center; 
+        color: #65676b; margin: 8px 0; display: none; 
+    }
+    .fb-drop-zone.active { 
+        border-color: #1877f2; background: #f0f8ff; 
+    }
+    .fb-preview { 
+        margin: 8px 0; 
+    }
+    .fb-preview img { 
+        max-width: 100px; border-radius: 8px; margin-right: 8px; 
+    }
+    .fb-remove-media { 
+        background: #ff4444; color: white; border: none; border-radius: 50%; 
+        width: 20px; height: 20px; font-size: 12px; cursor: pointer; 
+    }
+    .reply-form {
+        border-left: 3px solid #1877f2;
+        background: #f8f9fa;
+        padding: 12px;
+        margin: 8px 0;
+        border-radius: 8px;
+    }
+    .reply-form .fb-compose-input {
+        background: #fff;
+        border: 1px solid #ddd;
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+    </style>
+    
+    <div class="fb-comments">
+        <h4 style="margin-bottom: 20px; color: #1c1e21;">კომენტარები</h4>
+        
+        <!-- Comments List -->
+        <div id="comments-list">
+            {% for comment in comments %}
+            <div class="fb-comment" data-comment-id="{{ loop.index0 }}">
+                <div class="fb-comment-avatar">👤</div>
+                <div class="fb-comment-body">
+                    <div class="fb-comment-content">
+                        {% if comment.text %}{{ comment.text }}{% endif %}
+                        {% if comment.media %}
+                        <div class="fb-comment-media">
+                            {% if comment.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                            <img src="/projects/{{ project.folder }}/comments/{{ comment.media }}" onclick="openImageModal(this.src)">
+                            {% elif comment.media.endswith(('.mp4', '.webm', '.ogg')) %}
+                            <video controls style="max-width: 300px; border-radius: 8px;">
+                                <source src="/projects/{{ project.folder }}/comments/{{ comment.media }}">
+                            </video>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="fb-comment-actions">
+                        <a href="#" class="like-btn">👍 მომწონს</a>
+                        <a href="#" class="reply-btn" data-parent="{{ loop.index0 }}">💬 პასუხი</a>
+                        <span style="color: #65676b;">{{ comment.date if comment.date else 'ახლახანს' }}</span>
+                    </div>
+                    
+                    <!-- Reply form for this comment -->
+                    <div class="reply-form" id="reply-form-{{ loop.index0 }}" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #1877f2;">
+                        <div class="fb-compose">
+                            <div class="fb-comment-avatar" style="width: 28px; height: 28px;">👤</div>
+                            <div class="fb-compose-container">
+                                <form method="post" action="/add_comment/{{ project.id }}" enctype="multipart/form-data">
+                                    <textarea name="comment" class="fb-compose-input" placeholder="პასუხი ამ კომენტარზე..." rows="2" style="font-size: 14px;"></textarea>
+                                    <div class="fb-compose-actions">
+                                        <svg class="fb-icon photo-icon-reply" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                                        </svg>
+                                        <span class="fb-emoji" onclick="addEmojiToReply(this, '😊')">😊</span>
+                                        <span class="fb-emoji" onclick="addEmojiToReply(this, '❤️')">❤️</span>
+                                        <span class="fb-emoji" onclick="addEmojiToReply(this, '👍')">👍</span>
+                                    </div>
+                                    <input type="file" name="media" class="reply-media-input" accept="image/*,video/*" style="display: none;">
+                                    <input type="hidden" name="parent_id" value="{{ loop.index0 }}">
+                                    <div style="margin-top: 8px;">
+                                        <button type="submit" class="btn btn-primary btn-sm">პასუხის გაგზავნა</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if comment.replies %}
+                    <div class="fb-replies">
+                        {% for reply in comment.replies %}
+                        <div class="fb-comment">
+                            <div class="fb-comment-avatar" style="width: 28px; height: 28px;">👤</div>
+                            <div class="fb-comment-body">
+                                <div class="fb-comment-content" style="font-size: 14px;">
+                                    {% if reply.text %}{{ reply.text }}{% endif %}
+                                    {% if reply.media %}
+                                    <div class="fb-comment-media">
+                                        {% if reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                        <img src="/projects/{{ project.folder }}/comments/{{ reply.media }}" style="max-width: 200px;" onclick="openImageModal(this.src)">
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="fb-comment-actions">
+                                    <a href="#" class="like-btn">👍 მომწონს</a>
+                                    <span style="color: #65676b;">{{ reply.date if reply.date else 'ახლახანს' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Add Comment Form -->
+        <div class="fb-compose">
+            <div class="fb-comment-avatar">👤</div>
+            <div class="fb-compose-container">
+                <form method="post" action="/add_comment/{{ project.id }}" enctype="multipart/form-data" id="comment-form">
+                    <textarea name="comment" class="fb-compose-input" placeholder="დაწერეთ კომენტარი..." rows="1"></textarea>
+                    <div class="fb-compose-actions">
+                        <svg class="fb-icon" id="photo-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                        </svg>
+                        <span class="fb-emoji" onclick="addEmoji('😊')">😊</span>
+                        <span class="fb-emoji" onclick="addEmoji('❤️')">❤️</span>
+                        <span class="fb-emoji" onclick="addEmoji('👍')">👍</span>
+                    </div>
+                    <input type="file" name="media" id="media-input" accept="image/*,video/*" style="display: none;">
+                    <input type="hidden" name="parent_id" value="">
+                </form>
+                
+                <!-- Drop Zone -->
+                <div class="fb-drop-zone" id="drop-zone">
+                    📁 გადმოიტანეთ ფოტო აქ ან დააკლიკეთ ასარჩევად
+                </div>
+                
+                <!-- Media Preview -->
+                <div class="fb-preview" id="media-preview" style="display: none;">
+                    <span>არჩეული ფაილი: </span>
+                    <button type="button" class="fb-remove-media" onclick="removeMedia()">×</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Image Modal -->
+    <div id="imageModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; cursor: pointer;" onclick="closeImageModal()">
+        <img id="modalImage" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 90%; max-height: 90%;">
+    </div>
+    
+    <script>
+    let selectedFile = null;
+    
+    // Auto-resize textarea
+    const textarea = document.querySelector('.fb-compose-input');
+    textarea.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+    
+    // Auto-resize for all textareas
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('textarea')) {
+            e.target.style.height = 'auto';
+            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+        }
+    });
+    
+    // Photo icon click
+    document.getElementById('photo-icon').addEventListener('click', function() {
+        console.log('Main photo icon clicked');
+        document.getElementById('media-input').click();
+    });
+    
+    // Photo icons in reply forms
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('photo-icon-reply')) {
+            const replyForm = e.target.closest('.reply-form');
+            const fileInput = replyForm.querySelector('.reply-media-input');
+            console.log('Clicking reply photo icon, file input:', fileInput);
+            fileInput.click();
+        }
+    });
+    
+    // File selection for reply forms
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('reply-media-input')) {
+            console.log('Reply file input changed:', e.target.files);
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                console.log('Selected reply file:', file);
+                // Show preview for reply file
+                const replyForm = e.target.closest('.reply-form');
+                let preview = replyForm.querySelector('.reply-preview');
+                if (!preview) {
+                    preview = document.createElement('div');
+                    preview.className = 'reply-preview';
+                    preview.style.marginTop = '8px';
+                    replyForm.appendChild(preview);
+                }
+                preview.innerHTML = `<small>არჩეული: ${file.name} <button type="button" onclick="this.parentElement.innerHTML=''" style="background: #ff4444; color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px;">×</button></small>`;
+            }
+        }
+    });
+    
+    // File selection
+    document.getElementById('media-input').addEventListener('change', function(e) {
+        console.log('File input changed:', e.target.files);
+        if (e.target.files.length > 0) {
+            selectedFile = e.target.files[0];
+            console.log('Selected file:', selectedFile);
+            showPreview();
+        }
+    });
+    
+    // Drag & Drop
+    const dropZone = document.getElementById('drop-zone');
+    const compose = document.querySelector('.fb-compose-container');
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        compose.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        compose.addEventListener(eventName, () => {
+            dropZone.style.display = 'block';
+            dropZone.classList.add('active');
+        });
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        compose.addEventListener(eventName, () => {
+            dropZone.classList.remove('active');
+            setTimeout(() => {
+                if (!dropZone.classList.contains('active')) {
+                    dropZone.style.display = 'none';
+                }
+            }, 100);
+        });
+    });
+    
+    compose.addEventListener('drop', function(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length > 0) {
+            selectedFile = files[0];
+            document.getElementById('media-input').files = files;
+            showPreview();
+        }
+    });
+    
+    function showPreview() {
+        const preview = document.getElementById('media-preview');
+        preview.style.display = 'block';
+        preview.innerHTML = `<span>არჩეული: ${selectedFile.name}</span> <button type="button" class="fb-remove-media" onclick="removeMedia()">×</button>`;
+    }
+    
+    function removeMedia() {
+        selectedFile = null;
+        document.getElementById('media-input').value = '';
+        document.getElementById('media-preview').style.display = 'none';
+    }
+    
+    // Submit on Enter (Shift+Enter for new line)
+    textarea.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            console.log('Submitting comment with text:', this.value.trim(), 'and file:', selectedFile);
+            if (this.value.trim() || selectedFile) {
+                document.getElementById('comment-form').submit();
+            }
+        }
+    });
+    
+    // Submit reply forms on Enter
+    document.addEventListener('keydown', function(e) {
+        if (e.target.matches('.reply-form textarea') && e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (e.target.value.trim()) {
+                e.target.closest('form').submit();
+            }
+        }
+    });
+    
+    // Reply functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('reply-btn')) {
+            e.preventDefault();
+            const parentId = e.target.getAttribute('data-parent');
+            const replyForm = document.getElementById('reply-form-' + parentId);
+            const textarea = replyForm.querySelector('textarea');
+            
+            // Focus on the reply textarea
+            textarea.focus();
+            
+            // Scroll to the reply form
+            replyForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+    
+    // Image modal
+    function openImageModal(src) {
+        document.getElementById('modalImage').src = src;
+        document.getElementById('imageModal').style.display = 'block';
+    }
+    
+    function closeImageModal() {
+        document.getElementById('imageModal').style.display = 'none';
+    }
+    
+    // Add emoji function
+    function addEmoji(emoji) {
+        const textarea = document.querySelector('.fb-compose-input');
+        textarea.value += emoji;
+        textarea.focus();
+    }
+    
+    // Add emoji to reply field
+    function addEmojiToReply(element, emoji) {
+        const replyForm = element.closest('.reply-form');
+        const textarea = replyForm.querySelector('textarea');
+        textarea.value += emoji;
+        textarea.focus();
+    }
+    
+    // Like functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('like-btn')) {
+            e.preventDefault();
+            e.target.classList.toggle('fb-like-active');
+            if (e.target.classList.contains('fb-like-active')) {
+                e.target.textContent = '❤️ მომწონს';
+            } else {
+                e.target.textContent = '👍 მომწონს';
+            }
+        }
+    });
+    </script>
+    <a href="/" class="btn btn-link mt-3">უკან</a>
+</div>
+{% endblock %}
+{% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const lightbox = GLightbox({ selector: '.glightbox' });
+        
+        // 3D Viewer Loading Functionality
+        {% if project.viewer3D %}
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('=== STARTING CLICKABLE 3D LOADER (30 seconds) ===');
+            
+            const loadingContainer = document.getElementById('loadingContainer');
+            const viewer3D = document.getElementById('viewer3D');
+            const loadingAudio = document.getElementById('loadingAudio');
+            const loadingVideo = document.getElementById('loadingVideo');
+            
+            let mediaStopTimeout = null;
+            let mediaAlreadyStopped = false;
+            let audioStarted = false;
+            
+            // Force clear any existing intervals
+            for (let i = 1; i < 99999; i++) window.clearInterval(i);
+            
+            console.log('Elements found:', {
+                loadingContainer: !!loadingContainer,
+                viewer3D: !!viewer3D,
+                loadingAudio: !!loadingAudio,
+                loadingVideo: !!loadingVideo
+            });
+            
+            // Function to try starting audio
+            function tryStartAudio() {
+                if (audioStarted || !loadingAudio) return;
+                
+                // Unmute and play
+                loadingAudio.muted = false;
+                loadingAudio.play().then(() => {
+                    console.log('Audio started successfully (unmuted)');
+                    audioStarted = true;
+                }).catch(error => {
+                    console.log('Audio autoplay blocked even with unmute, will try after user interaction:', error);
+                    // Keep it muted for now, will try again on user interaction
+                    loadingAudio.muted = true;
+                });
+            }
+            
+            // Function to stop media and show 3D viewer
+            function showViewer() {
+                if (mediaAlreadyStopped) return; // Prevent multiple calls
+                mediaAlreadyStopped = true;
+                
+                console.log('=== STOPPING MEDIA AND SHOWING 3D VIEWER ===');
+                
+                // Clear the timeout if user clicked early
+                if (mediaStopTimeout) {
+                    clearTimeout(mediaStopTimeout);
+                    mediaStopTimeout = null;
+                }
+                
+                // Stop all media
+                if (loadingAudio) {
+                    console.log('Stopping audio');
+                    loadingAudio.pause();
+                    loadingAudio.currentTime = 0;
+                }
+                if (loadingVideo) {
+                    console.log('Stopping video');
+                    loadingVideo.pause();
+                    loadingVideo.currentTime = 0;
+                }
+                
+                // Hide loading completely
+                if (loadingContainer) {
+                    console.log('Hiding loading container');
+                    loadingContainer.style.display = 'none';
+                    loadingContainer.style.visibility = 'hidden';
+                    loadingContainer.classList.add('hidden');
+                }
+                
+                // Show 3D viewer completely
+                if (viewer3D) {
+                    console.log('Showing 3D viewer');
+                    viewer3D.style.display = 'block';
+                    viewer3D.style.visibility = 'visible';
+                    viewer3D.classList.remove('hidden');
+                }
+                
+                console.log('=== 3D VIEWER NOW VISIBLE ===');
+            }
+            
+            // Make sure viewer is hidden initially
+            if (viewer3D) {
+                viewer3D.style.display = 'none';
+                viewer3D.style.visibility = 'hidden';
+                viewer3D.classList.add('hidden');
+            }
+            
+            // Make sure loading is visible and clickable
+            if (loadingContainer) {
+                loadingContainer.style.display = 'block';
+                loadingContainer.style.visibility = 'visible';
+                loadingContainer.classList.remove('hidden');
+                loadingContainer.style.cursor = 'pointer';
+                loadingContainer.title = '3D მოდელის ნახვისთვის დააჭირეთ';
+                
+                // Add click event to loading container
+                loadingContainer.addEventListener('click', function() {
+                    console.log('User clicked on loading container - trying to start audio and showing viewer');
+                    tryStartAudio(); // Try to start audio on user interaction
+                    setTimeout(() => showViewer(), 100); // Small delay to let audio start
+                });
+                
+                // Try to start audio immediately (might fail due to autoplay policy)
+                setTimeout(tryStartAudio, 100);
+                
+                // Also try on any user interaction with the page
+                document.addEventListener('click', function() {
+                    tryStartAudio();
+                }, { once: true });
+            }
+            
+            console.log('Starting 30-second timer (click to skip)...');
+            
+            // Auto-show after 30 seconds
+            mediaStopTimeout = setTimeout(function() {
+                console.log('30 seconds completed automatically');
+                showViewer();
+            }, 30000); // 30 seconds
+            
+        });
+        {% endif %}
+        
+        {% if project.latitude and project.longitude %}
+        var map = L.map('map').setView([{{ project.latitude }}, {{ project.longitude }}], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        L.marker([{{ project.latitude }}, {{ project.longitude }}]).addTo(map)
+            .bindPopup('{{ project.title }}').openPopup();
+        {% endif %}
+    </script>
+{% endblock %}
+</html>

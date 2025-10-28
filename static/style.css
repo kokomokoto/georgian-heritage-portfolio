@@ -1,0 +1,207 @@
+/* Facebook-style Comments CSS */
+.fb-comments {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.fb-comment-hover:hover {
+    background-color: #f7f8fa !important;
+}
+
+.fb-like-active {
+    color: #1877f2 !important;
+}
+
+.fb-emoji {
+    font-size: 16px;
+    cursor: pointer;
+    margin: 0 4px;
+}
+
+.fb-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .fb-comment {
+        margin-bottom: 12px;
+    }
+    
+    .fb-comment-avatar {
+        width: 28px;
+        height: 28px;
+        margin-right: 6px;
+    }
+    
+    .fb-compose-input {
+        font-size: 14px;
+    }
+    
+    .fb-comment-media img {
+        max-width: 200px;
+    }
+}
+
+/* Animation for new comments */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fb-new-comment {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Category Filter Styles */
+.filter-checkbox {
+    margin-right: 8px;
+}
+
+/* Mobile responsive styles for category filters */
+@media (max-width: 576px) {
+    .form-check {
+        margin-bottom: 8px;
+    }
+    
+    .form-check-label {
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    h6 {
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #495057;
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 5px;
+    }
+    
+    .row.mb-4 {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        margin-bottom: 20px !important;
+    }
+    
+    .col-6 {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+}
+
+@media (min-width: 577px) and (max-width: 768px) {
+    .form-check-label {
+        font-size: 0.95rem;
+    }
+    
+    .row.mb-4 {
+        background-color: #f8f9fa;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    }
+}
+
+/* Sidepanel Styles */
+.offcanvas {
+    width: 300px !important;
+}
+
+.offcanvas-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.offcanvas-title {
+    color: #495057;
+    font-weight: 600;
+}
+
+.filter-section {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.filter-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* Mobile responsiveness for sidepanel */
+@media (max-width: 576px) {
+    .offcanvas {
+        width: 280px !important;
+    }
+    
+    .offcanvas-body {
+        padding: 1rem;
+    }
+    
+    .form-check {
+        margin-bottom: 10px;
+    }
+    
+    .form-check-input {
+        margin-top: 0.25rem;
+    }
+}
+
+/* Project Description Styling */
+.project-description {
+    white-space: pre-line;
+    word-wrap: break-word;
+    line-height: 1.6;
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.project-description p {
+    margin-bottom: 1rem;
+}
+
+/* Remove excessive line breaks in description */
+.project-description br + br {
+    display: none;
+}
+
+/* Clickable Project Cards */
+.clickable-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.clickable-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.clickable-card:hover .card {
+    border-color: #0d6efd;
+}
+
+.clickable-card:active {
+    transform: translateY(-2px);
+}
+
+/* Make sure images in clickable cards are not selectable */
+.clickable-card img {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Center project card titles */
+.card-title {
+    text-align: center;
+}

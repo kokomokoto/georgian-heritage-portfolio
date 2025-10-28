@@ -1,0 +1,13 @@
+#!/bin/bash
+# Build script for Render.com
+
+# Set environment variables
+export FLASK_ENV=production
+
+# Create necessary directories
+mkdir -p projects
+mkdir -p uploads
+mkdir -p static/uploads
+
+# Start the application with gunicorn
+gunicorn --bind 0.0.0.0:$PORT app:app
