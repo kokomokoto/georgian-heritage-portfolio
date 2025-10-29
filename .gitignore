@@ -3,6 +3,12 @@
 venv/
 env/
 
+# Environment Variables - NEVER COMMIT THESE!
+.env
+.env.local
+.env.production
+.env.staging
+
 # Python Cache
 __pycache__/
 *.pyc
