@@ -293,11 +293,28 @@ def edit_project(project_id):
 
 @app.route('/')
 def index():
-    q = request.args.get('q', '').lower()
-    projects = load_projects()
-    if q:
-        projects = [p for p in projects if q in p['title'].lower()]
-    return render_template('index.html', projects=projects, q=q)
+    try:
+        q = request.args.get('q', '').lower()
+        projects = load_projects()
+        if q:
+            projects = [p for p in projects if q in p['title'].lower()]
+        return render_template('index.html', projects=projects, q=q)
+    except Exception as e:
+        # For debugging on Render
+        return f"Error in index route: {str(e)}", 500
+
+@app.route('/debug')
+def debug():
+    """Debug route to check what's happening on Render"""
+    import os
+    debug_info = {
+        'cwd': os.getcwd(),
+        'projects_dir_exists': os.path.exists(PROJECTS_DIR),
+        'projects_json_exists': os.path.exists(PROJECTS_JSON),
+        'templates_exist': os.path.exists('templates'),
+        'index_template_exists': os.path.exists('templates/index.html'),
+    }
+    return f"Debug info: {debug_info}"
 
 # Authentication Routes
 @app.route('/register', methods=['GET', 'POST'])
@@ -821,6 +838,12 @@ def live_search():
         for p in filtered
     ]
     return jsonify({'projects': result})
+
+# Create database tables if they don't exist
+with app.app_context():
+    db.create_all()
+    # Also ensure projects directory exists
+    os.makedirs(PROJECTS_DIR, exist_ok=True)
 
 if __name__ == '__main__':
     os.makedirs(PROJECTS_DIR, exist_ok=True)
