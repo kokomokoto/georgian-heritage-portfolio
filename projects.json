@@ -58,53 +58,8 @@
   {
     "id": "project_2",
     "title": "ნარიყალა და იგი სიმონ",
-    "main_image": "PNG",
-    "other_images": [
-      {
-        "file": "bagrati.PNG",
-        "caption": "სურათი და რა,მე ერთია"
-      },
-      {
-        "file": "eye.png",
-        "caption": "კსწჯდჰაჯსფდ  ლ;ჯწჰდნ ლკაჯსნჰდ ლაწჯდ ;  ჰწ;ლდჯკნ წდა 122164 ა დსკჯბასლკ ჯდ ჰბაწლკდ   კაჯსბჰდ კაჯჰწ"
-      },
-      {
-        "file": "mason-symbol-icon-34.jpg",
-        "caption": "ქანაე "
-      },
-      {
-        "file": "metexii.PNG",
-        "caption": "ასდასფდაფ"
-      },
-      {
-        "file": "narikala_1.jpg",
-        "caption": "ასდასდა"
-      },
-      {
-        "file": "narikala_2.jpg",
-        "caption": "ასფდასფასდფგსფ"
-      },
-      {
-        "file": "vajas_dzegli.PNG",
-        "caption": "ასეფ სედფ სეფას"
-      },
-      {
-        "file": "vake.PNG",
-        "caption": "ეფ ასდსდსფ სეფ"
-      },
-      {
-        "file": "ye.PNG",
-        "caption": "საეფ სეფსეფასდ ასდ ა"
-      },
-      {
-        "file": "zgvis_eklesia.PNG",
-        "caption": " ასეფ აეფასედფსდ ასდ "
-      },
-      {
-        "file": "PNG",
-        "caption": "დასდას"
-      }
-    ],
+    "main_image": "",
+    "other_images": [],
     "viewer3D": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/09.03VAKIS%20dzegli/index.html",
     "description_file": "description.txt",
     "folder": "project_2",
@@ -124,7 +79,8 @@
     "address": "აეფა",
     "project_info": {
       "არქიტექტორი": "ვახოიე",
-      "დამრტყმელი პურიმჭამელი": "გიოია კეპულა"
+      "დამრტყმელი პურიმჭამელი": "გიოია კეპულა",
+      "ეგი და იგი": "იგია მაგი კი იგი"
     },
     "type_categories": [
       "ეკლესია",
@@ -143,7 +99,8 @@
       "1991 + წელი"
     ],
     "loading_video": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/videoebi/videoebi/vashlis%20gamyidvelo!.mp4",
-    "loading_audio": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/videoebi/musics/mus.m4a"
+    "loading_audio": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/videoebi/musics/mus.m4a",
+    "documents": []
   },
   {
     "id": "project_3",

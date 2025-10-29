@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>კომენტარის ტესტი</title>
+    <script>
+        function testComment() {
+            const form = document.getElementById('test-form');
+            const formData = new FormData(form);
+            
+            console.log('Form data:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key, value);
+            }
+            
+            fetch('/add_comment/project_2', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                return response.text();
+            })
+            .then(text => {
+                console.log('Response text:', text);
+                try {
+                    const data = JSON.parse(text);
+                    console.log('Parsed JSON:', data);
+                } catch (e) {
+                    console.log('Not JSON, raw response:', text);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>კომენტარის ტესტი</h1>
+    <form id="test-form">
+        <textarea name="comment" placeholder="კომენტარი">ტესტ კომენტარი</textarea><br>
+        <input type="hidden" name="parent_id" value="">
+        <button type="button" onclick="testComment()">გაგზავნა</button>
+    </form>
+</body>
+</html>

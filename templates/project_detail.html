@@ -215,19 +215,12 @@
     <h4>სხვა სურათები</h4>
     <div class="row">
         {% for img in project.other_images %}
-        {% set fname = img.file if img.file is defined else img %}
-        {% if fname and fname|lower not in ['png', ''] %}
+        {% if img.url %}
         <div class="col-md-3 mb-2">
-            {% if img.file %}
-            <a href="/projects/{{ project.folder }}/{{ img.file }}" class="glightbox" data-gallery="gallery1" data-title="{{ img.caption }}">
-                <img src="/projects/{{ project.folder }}/{{ img.file }}" class="img-thumbnail" alt="სურათი">
+            <a href="{{ img.url }}" class="glightbox" data-gallery="gallery1" data-title="{{ img.caption }}">
+                <img src="{{ img.url }}" class="img-thumbnail" alt="სურათი">
             </a>
             <div class="text-center small text-muted mt-1">{{ img.caption }}</div>
-            {% else %}
-            <a href="/projects/{{ project.folder }}/{{ img }}" class="glightbox" data-gallery="gallery1">
-                <img src="/projects/{{ project.folder }}/{{ img }}" class="img-thumbnail" alt="სურათი">
-            </a>
-            {% endif %}
         </div>
         {% endif %}
         {% endfor %}
@@ -321,6 +314,7 @@
         padding: 12px;
         margin: 8px 0;
         border-radius: 8px;
+        display: none;
     }
     .reply-form .fb-compose-input {
         background: #fff;
@@ -336,46 +330,86 @@
         <!-- Comments List -->
         <div id="comments-list">
             {% for comment in comments %}
-            <div class="fb-comment" data-comment-id="{{ loop.index0 }}">
-                <div class="fb-comment-avatar">👤</div>
+            <div class="fb-comment" data-comment-id="{{ comment.id if comment.id else loop.index0 }}">
+                <div class="fb-comment-avatar">
+                    👤
+                </div>
                 <div class="fb-comment-body">
                     <div class="fb-comment-content">
-                        {% if comment.text %}{{ comment.text }}{% endif %}
+                        {% if comment.author %}
+                            <strong>{{ comment.author.name }}</strong><br>
+                        {% endif %}
+                        {% if comment.content %}{{ comment.content }}{% endif %}
                         {% if comment.media %}
                         <div class="fb-comment-media">
-                            {% if comment.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
-                            <img src="/projects/{{ project.folder }}/comments/{{ comment.media }}" onclick="openImageModal(this.src)">
-                            {% elif comment.media.endswith(('.mp4', '.webm', '.ogg')) %}
-                            <video controls style="max-width: 300px; border-radius: 8px;">
-                                <source src="/projects/{{ project.folder }}/comments/{{ comment.media }}">
-                            </video>
+                            {% if comment.media.startswith('http') %}
+                                {% if comment.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in comment.media %}
+                                <img src="{{ comment.media }}" onclick="openImageModal(this.src)" style="max-width: 300px; border-radius: 8px;">
+                                {% elif comment.media.endswith(('.mp4', '.webm', '.ogg')) or 'video' in comment.media %}
+                                <video controls style="max-width: 300px; border-radius: 8px;">
+                                    <source src="{{ comment.media }}">
+                                </video>
+                                {% endif %}
+                            {% else %}
+                                {% if comment.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                <img src="/projects/{{ project.folder }}/comments/{{ comment.media }}" onclick="openImageModal(this.src)" style="max-width: 300px; border-radius: 8px;">
+                                {% elif comment.media.endswith(('.mp4', '.webm', '.ogg')) %}
+                                <video controls style="max-width: 300px; border-radius: 8px;">
+                                    <source src="/projects/{{ project.folder }}/comments/{{ comment.media }}">
+                                </video>
+                                {% endif %}
                             {% endif %}
                         </div>
                         {% endif %}
                     </div>
                     <div class="fb-comment-actions">
-                        <a href="#" class="like-btn">👍 მომწონს</a>
-                        <a href="#" class="reply-btn" data-parent="{{ loop.index0 }}">💬 პასუხი</a>
-                        <span style="color: #65676b;">{{ comment.date if comment.date else 'ახლახანს' }}</span>
+                        {% if current_user.is_authenticated %}
+                            <a href="#" class="like-btn" data-comment-id="{{ comment.id }}" 
+                               data-liked="{{ 'true' if comment.is_liked_by_user(current_user.id) else 'false' }}">
+                                {% if comment.is_liked_by_user(current_user.id) %}
+                                    ❤️ მომწონს ({{ comment.get_like_count() }})
+                                {% else %}
+                                    👍 მომწონს{% if comment.get_like_count() > 0 %} ({{ comment.get_like_count() }}){% endif %}
+                                {% endif %}
+                            </a>
+                            <a href="#" class="reply-btn" data-parent="{{ comment.id if comment.id else loop.index0 }}">💬 პასუხი</a>
+                        {% else %}
+                            <span class="text-muted">👍 მომწონს{% if comment.get_like_count() > 0 %} ({{ comment.get_like_count() }}){% endif %}</span>
+                        {% endif %}
+                        <!-- Show delete option if user owns the comment -->
+                        {% if current_user.is_authenticated and comment.author and comment.author.id == current_user.id %}
+                            <a href="#" class="delete-btn" onclick="deleteComment({{ comment.id }}, '{{ project.id }}')">🗑️ წაშლა</a>
+                        {% endif %}
+                        <span style="color: #65676b;">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') if comment.created_at else 'ახლახანს' }}</span>
                     </div>
                     
                     <!-- Reply form for this comment -->
-                    <div class="reply-form" id="reply-form-{{ loop.index0 }}" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #1877f2;">
+                    <div class="reply-form" id="reply-form-{{ comment.id if comment.id else loop.index0 }}" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #1877f2;">
                         <div class="fb-compose">
-                            <div class="fb-comment-avatar" style="width: 28px; height: 28px;">👤</div>
+                            <div class="fb-comment-avatar" style="width: 28px; height: 28px;">
+                                👤
+                            </div>
                             <div class="fb-compose-container">
                                 <form method="post" action="/add_comment/{{ project.id }}" enctype="multipart/form-data">
+                                    <div class="row mb-2">
+                                        <div class="col-8">
+                                            <input type="text" name="author_name" class="form-control" placeholder="თქვენი სახელი..." required style="border-radius: 15px; border: 1px solid #ddd; padding: 6px 10px; font-size: 13px;">
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="email" name="author_email" class="form-control" placeholder="ემეილი" style="border-radius: 15px; border: 1px solid #ddd; padding: 6px 10px; font-size: 12px;">
+                                        </div>
+                                    </div>
                                     <textarea name="comment" class="fb-compose-input" placeholder="პასუხი ამ კომენტარზე..." rows="2" style="font-size: 14px;"></textarea>
                                     <div class="fb-compose-actions">
                                         <svg class="fb-icon photo-icon-reply" viewBox="0 0 24 24" fill="currentColor">
-                                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                                         </svg>
                                         <span class="fb-emoji" onclick="addEmojiToReply(this, '😊')">😊</span>
                                         <span class="fb-emoji" onclick="addEmojiToReply(this, '❤️')">❤️</span>
                                         <span class="fb-emoji" onclick="addEmojiToReply(this, '👍')">👍</span>
                                     </div>
                                     <input type="file" name="media" class="reply-media-input" accept="image/*,video/*" style="display: none;">
-                                    <input type="hidden" name="parent_id" value="{{ loop.index0 }}">
+                                    <input type="hidden" name="parent_id" value="{{ comment.id if comment.id else loop.index0 }}">
                                     <div style="margin-top: 8px;">
                                         <button type="submit" class="btn btn-primary btn-sm">პასუხის გაგზავნა</button>
                                     </div>
@@ -388,22 +422,115 @@
                     <div class="fb-replies">
                         {% for reply in comment.replies %}
                         <div class="fb-comment">
-                            <div class="fb-comment-avatar" style="width: 28px; height: 28px;">👤</div>
+                            <div class="fb-comment-avatar" style="width: 28px; height: 28px;">
+                                👤
+                            </div>
                             <div class="fb-comment-body">
                                 <div class="fb-comment-content" style="font-size: 14px;">
-                                    {% if reply.text %}{{ reply.text }}{% endif %}
+                                    {% if reply.author %}
+                                        <strong>{{ reply.author.email }}</strong><br>
+                                    {% endif %}
+                                    {% if reply.content %}{{ reply.content }}{% endif %}
                                     {% if reply.media %}
                                     <div class="fb-comment-media">
-                                        {% if reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
-                                        <img src="/projects/{{ project.folder }}/comments/{{ reply.media }}" style="max-width: 200px;" onclick="openImageModal(this.src)">
+                                        {% if reply.media.startswith('http') %}
+                                            {% if reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in reply.media %}
+                                            <img src="{{ reply.media }}" style="max-width: 200px; border-radius: 8px;" onclick="openImageModal(this.src)">
+                                            {% elif reply.media.endswith(('.mp4', '.webm', '.ogg')) or 'video' in reply.media %}
+                                            <video controls style="max-width: 200px; border-radius: 8px;">
+                                                <source src="{{ reply.media }}">
+                                            </video>
+                                            {% endif %}
+                                        {% else %}
+                                            {% if reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                            <img src="/projects/{{ project.folder }}/comments/{{ reply.media }}" style="max-width: 200px; border-radius: 8px;" onclick="openImageModal(this.src)">
+                                            {% elif reply.media.endswith(('.mp4', '.webm', '.ogg')) %}
+                                            <video controls style="max-width: 200px; border-radius: 8px;">
+                                                <source src="/projects/{{ project.folder }}/comments/{{ reply.media }}">
+                                            </video>
+                                            {% endif %}
                                         {% endif %}
                                     </div>
                                     {% endif %}
                                 </div>
                                 <div class="fb-comment-actions">
                                     <a href="#" class="like-btn">👍 მომწონს</a>
+                                    <a href="#" class="reply-btn" data-parent="{{ reply.id if reply.id else loop.index0 }}">💬 პასუხი</a>
                                     <span style="color: #65676b;">{{ reply.date if reply.date else 'ახლახანს' }}</span>
                                 </div>
+                                
+                                <!-- Reply form for this reply -->
+                                <div class="reply-form" id="reply-form-{{ reply.id if reply.id else loop.index0 }}" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #1877f2;">
+                                    <div class="fb-compose">
+                                        <div class="fb-comment-avatar" style="width: 24px; height: 24px;">
+                                            👤
+                                        </div>
+                                        <div class="fb-compose-container">
+                                            <form method="post" action="/add_comment/{{ project.id }}" enctype="multipart/form-data">
+                                                <textarea name="comment" class="fb-compose-input" placeholder="პასუხი ამ კომენტარზე..." rows="2" style="font-size: 13px;"></textarea>
+                                                <div class="fb-compose-actions">
+                                                    <svg class="fb-icon photo-icon-reply" viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                                                    </svg>
+                                                    <span class="fb-emoji" onclick="addEmojiToReply(this, '😊')" style="font-size: 14px;">😊</span>
+                                                    <span class="fb-emoji" onclick="addEmojiToReply(this, '❤️')" style="font-size: 14px;">❤️</span>
+                                                    <span class="fb-emoji" onclick="addEmojiToReply(this, '👍')" style="font-size: 14px;">👍</span>
+                                                </div>
+                                                <input type="file" name="media" class="reply-media-input" accept="image/*,video/*" style="display: none;">
+                                                <input type="hidden" name="parent_id" value="{{ reply.id if reply.id else loop.index0 }}">
+                                                <div style="margin-top: 6px;">
+                                                    <button type="submit" class="btn btn-primary btn-sm" style="font-size: 12px; padding: 4px 8px;">პასუხის გაგზავნა</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Show nested replies (replies to this reply) -->
+                                {% if reply.replies %}
+                                <div class="fb-replies" style="margin-left: 20px; border-left: 2px solid #e4e6ea; padding-left: 12px;">
+                                    {% for nested_reply in reply.replies %}
+                                    <div class="fb-comment">
+                                        <div class="fb-comment-avatar" style="width: 24px; height: 24px;">
+                                            👤
+                                        </div>
+                                        <div class="fb-comment-body">
+                                            <div class="fb-comment-content" style="font-size: 13px;">
+                                                {% if nested_reply.author %}
+                                                    <strong>{{ nested_reply.author.email }}</strong><br>
+                                                {% endif %}
+                                                {% if nested_reply.content %}{{ nested_reply.content }}{% endif %}
+                                                {% if nested_reply.media %}
+                                                <div class="fb-comment-media">
+                                                    {% if nested_reply.media.startswith('http') %}
+                                                        {% if nested_reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in nested_reply.media %}
+                                                        <img src="{{ nested_reply.media }}" style="max-width: 150px; border-radius: 8px;" onclick="openImageModal(this.src)">
+                                                        {% elif nested_reply.media.endswith(('.mp4', '.webm', '.ogg')) or 'video' in nested_reply.media %}
+                                                        <video controls style="max-width: 150px; border-radius: 8px;">
+                                                            <source src="{{ nested_reply.media }}">
+                                                        </video>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        {% if nested_reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                                        <img src="/projects/{{ project.folder }}/comments/{{ nested_reply.media }}" style="max-width: 150px; border-radius: 8px;" onclick="openImageModal(this.src)">
+                                                        {% elif nested_reply.media.endswith(('.mp4', '.webm', '.ogg')) %}
+                                                        <video controls style="max-width: 150px; border-radius: 8px;">
+                                                            <source src="/projects/{{ project.folder }}/comments/{{ nested_reply.media }}">
+                                                        </video>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="fb-comment-actions">
+                                                <a href="#" class="like-btn" style="font-size: 12px;">👍 მომწონს</a>
+                                                <span style="color: #65676b; font-size: 11px;">{{ nested_reply.date if nested_reply.date else 'ახლახანს' }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -416,10 +543,16 @@
         
         <!-- Add Comment Form -->
         <div class="fb-compose">
-            <div class="fb-comment-avatar">👤</div>
+            <div class="fb-comment-avatar">
+                👤
+            </div>
             <div class="fb-compose-container">
+                {% if current_user.is_authenticated %}
                 <form method="post" action="/add_comment/{{ project.id }}" enctype="multipart/form-data" id="comment-form">
-                    <textarea name="comment" class="fb-compose-input" placeholder="დაწერეთ კომენტარი..." rows="1"></textarea>
+                    <div class="fb-user-info" style="margin-bottom: 10px; font-size: 14px; color: #65676b;">
+                        <strong>{{ current_user.name }}</strong> - როგორც შესული მომხმარებელი
+                    </div>
+                    <textarea name="comment" class="fb-compose-input main-comment-textarea" id="main-comment-textarea" placeholder="დაწერეთ კომენტარი..." rows="1"></textarea>
                     <div class="fb-compose-actions">
                         <svg class="fb-icon" id="photo-icon" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
@@ -430,7 +563,20 @@
                     </div>
                     <input type="file" name="media" id="media-input" accept="image/*,video/*" style="display: none;">
                     <input type="hidden" name="parent_id" value="">
+                    <button type="submit" style="display: none;" id="hidden-submit">Submit</button>
+                    <div class="mt-1">
+                        <button type="submit" class="btn btn-primary btn-sm" style="border-radius: 20px; padding: 4px 16px; font-size: 13px;">გამოქვეყნება</button>
+                    </div>
                 </form>
+                {% else %}
+                <!-- არა-რეგისტრირებული მომხმარებლებისთვის -->
+                <div style="text-align: center; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f8f9fa;">
+                    <h5>კომენტარის დასაწერად საჭიროა რეგისტრაცია</h5>
+                    <p style="margin-bottom: 15px; color: #65676b;">გთხოვთ შეხვიდეთ ანგარიშში ან დარეგისტრირდეთ კომენტარის დასაწერად.</p>
+                    <a href="{{ url_for('login') }}" class="btn btn-primary" style="margin-right: 10px;">შესვლა</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-outline-primary">რეგისტრაცია</a>
+                </div>
+                {% endif %}
                 
                 <!-- Drop Zone -->
                 <div class="fb-drop-zone" id="drop-zone">
@@ -452,14 +598,181 @@
     </div>
     
     <script>
-    let selectedFile = null;
+    // Global function for deleting comments
+    function deleteCommentWithEmail(commentId, projectId) {
+        const email = prompt('თქვენი ემეილი კომენტარის წასაშლელად:');
+        if (email && email.trim()) {
+            if (confirm('ნამდვილად გსურთ ამ კომენტარის წაშლა?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/delete_comment/${commentId}/${projectId}`;
+                
+                const emailInput = document.createElement('input');
+                emailInput.type = 'hidden';
+                emailInput.name = 'author_email';
+                emailInput.value = email.trim();
+                form.appendChild(emailInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    }
     
-    // Auto-resize textarea
-    const textarea = document.querySelector('.fb-compose-input');
-    textarea.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-    });
+    document.addEventListener('DOMContentLoaded', function() {
+        let selectedFile = null;
+        
+        // Get main textarea
+        const mainTextarea = document.getElementById('main-comment-textarea');
+        const mainForm = document.getElementById('comment-form');
+        
+        console.log('Main textarea found:', mainTextarea);
+        console.log('Main form found:', mainForm);
+        
+        if (!mainTextarea) {
+            console.error('Main textarea not found!');
+            return;
+        }
+        
+        // Handle main comment form submission via AJAX
+        if (mainForm) {
+            console.log('Adding event listener to main form');
+            mainForm.addEventListener('submit', function(e) {
+                console.log('Form submit event triggered');
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const commentText = formData.get('comment');
+                
+                console.log('Comment text:', commentText);
+                
+                // Check if comment has content
+                if (!commentText || commentText.trim() === '') {
+                    showMessage('გთხოვთ დაწერეთ კომენტარი', 'error');
+                    return;
+                }
+                
+                // Disable submit button temporarily
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'იგზავნება...';
+                }
+                
+                console.log('Sending AJAX request to:', this.action);
+                
+                fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Add comment to the page without refresh
+                        addCommentToPage(data.comment);
+                        
+                        // Clear form
+                        this.reset();
+                        mainTextarea.style.height = 'auto';
+                        removeMedia();
+                        
+                        // Show success message
+                        showMessage('კომენტარი წარმატებით დაემატა!', 'success');
+                    } else {
+                        showMessage(data.error || 'შეცდომა მოხდა', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('შეცდომა მოხდა კომენტარის გაგზავნისას', 'error');
+                })
+                .finally(() => {
+                    // Re-enable submit button
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'გამოქვეყნება';
+                    }
+                });
+            });
+        }
+        
+        // Function to add comment to page dynamically
+        function addCommentToPage(comment) {
+            const commentsContainer = document.querySelector('.fb-comments');
+            if (!commentsContainer) return;
+            
+            const commentHtml = `
+                <div class="fb-comment">
+                    <div class="fb-comment-avatar">👤</div>
+                    <div class="fb-comment-body">
+                        <div class="fb-comment-content">
+                            <strong>${comment.author.name}</strong><br>
+                            ${comment.content}
+                            ${comment.media_url ? `<div class="fb-comment-media"><img src="${comment.media_url}" style="max-width: 300px; border-radius: 8px;"></div>` : ''}
+                        </div>
+                        <div class="fb-comment-actions">
+                            <a href="#" class="like-btn">👍 მომწონს</a>
+                            <a href="#" class="reply-btn" data-parent="${comment.id}">💬 პასუხი</a>
+                            <span style="color: #65676b;">ახლახანს</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            commentsContainer.insertAdjacentHTML('afterbegin', commentHtml);
+        }
+        
+        // Function to show messages
+        function showMessage(text, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible`;
+            messageDiv.innerHTML = `
+                ${text}
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+            `;
+            
+            const container = document.querySelector('.container');
+            if (container) {
+                container.insertBefore(messageDiv, container.firstChild);
+                
+                // Auto remove after 3 seconds
+                setTimeout(() => {
+                    if (messageDiv.parentElement) {
+                        messageDiv.remove();
+                    }
+                }, 3000);
+            }
+        }
+        
+        // Auto-resize textarea
+        mainTextarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+        
+        // Submit on Enter (Shift+Enter for new line)
+        mainTextarea.addEventListener('keydown', function(e) {
+            console.log('Key pressed:', e.key, 'Shift:', e.shiftKey, 'Text:', this.value.trim());
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                console.log('Attempting to submit comment...');
+                if (this.value.trim() || selectedFile) {
+                    console.log('Submitting form...');
+                    document.getElementById('comment-form').submit();
+                } else {
+                    console.log('No text or file to submit');
+                }
+            }
+        });
     
     // Auto-resize for all textareas
     document.addEventListener('input', function(e) {
@@ -469,11 +782,35 @@
         }
     });
     
-    // Photo icon click
-    document.getElementById('photo-icon').addEventListener('click', function() {
-        console.log('Main photo icon clicked');
-        document.getElementById('media-input').click();
-    });
+        // Photo icon click
+        document.getElementById('photo-icon').addEventListener('click', function() {
+            console.log('Main photo icon clicked');
+            document.getElementById('media-input').click();
+        });
+        
+        // File selection
+        document.getElementById('media-input').addEventListener('change', function(e) {
+            console.log('File input changed:', e.target.files);
+            if (e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                console.log('Selected file:', selectedFile);
+                showPreview();
+            }
+        });
+        
+        // Functions moved inside DOMContentLoaded
+        function showPreview() {
+            const preview = document.getElementById('media-preview');
+            preview.style.display = 'block';
+            preview.innerHTML = `<span>არჩეული: ${selectedFile.name}</span> <button type="button" class="fb-remove-media" onclick="removeMedia()">×</button>`;
+        }
+        
+        // Make removeMedia global so it can be called from inline onclick
+        window.removeMedia = function() {
+            selectedFile = null;
+            document.getElementById('media-input').value = '';
+            document.getElementById('media-preview').style.display = 'none';
+        };
     
     // Photo icons in reply forms
     document.addEventListener('click', function(e) {
@@ -503,16 +840,6 @@
                 }
                 preview.innerHTML = `<small>არჩეული: ${file.name} <button type="button" onclick="this.parentElement.innerHTML=''" style="background: #ff4444; color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px;">×</button></small>`;
             }
-        }
-    });
-    
-    // File selection
-    document.getElementById('media-input').addEventListener('change', function(e) {
-        console.log('File input changed:', e.target.files);
-        if (e.target.files.length > 0) {
-            selectedFile = e.target.files[0];
-            console.log('Selected file:', selectedFile);
-            showPreview();
         }
     });
     
@@ -569,17 +896,6 @@
         document.getElementById('media-preview').style.display = 'none';
     }
     
-    // Submit on Enter (Shift+Enter for new line)
-    textarea.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            console.log('Submitting comment with text:', this.value.trim(), 'and file:', selectedFile);
-            if (this.value.trim() || selectedFile) {
-                document.getElementById('comment-form').submit();
-            }
-        }
-    });
-    
     // Submit reply forms on Enter
     document.addEventListener('keydown', function(e) {
         if (e.target.matches('.reply-form textarea') && e.key === 'Enter' && !e.shiftKey) {
@@ -598,11 +914,19 @@
             const replyForm = document.getElementById('reply-form-' + parentId);
             const textarea = replyForm.querySelector('textarea');
             
-            // Focus on the reply textarea
-            textarea.focus();
+            // Toggle reply form visibility
+            if (replyForm.style.display === 'none' || replyForm.style.display === '') {
+                replyForm.style.display = 'block';
+            } else {
+                replyForm.style.display = 'none';
+            }
             
-            // Scroll to the reply form
-            replyForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Focus on the reply textarea if shown
+            if (replyForm.style.display === 'block') {
+                textarea.focus();
+                // Scroll to the reply form
+                replyForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     });
     
@@ -618,7 +942,7 @@
     
     // Add emoji function
     function addEmoji(emoji) {
-        const textarea = document.querySelector('.fb-compose-input');
+        const textarea = document.getElementById('main-comment-textarea');
         textarea.value += emoji;
         textarea.focus();
     }
@@ -635,14 +959,51 @@
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('like-btn')) {
             e.preventDefault();
-            e.target.classList.toggle('fb-like-active');
-            if (e.target.classList.contains('fb-like-active')) {
-                e.target.textContent = '❤️ მომწონს';
-            } else {
-                e.target.textContent = '👍 მომწონს';
+            
+            const commentId = e.target.dataset.commentId;
+            if (!commentId) {
+                console.error('Comment ID not found');
+                return;
             }
+            
+            // Disable button temporarily
+            e.target.style.pointerEvents = 'none';
+            
+            fetch(`/toggle_like/${commentId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update button appearance and text
+                    if (data.is_liked) {
+                        e.target.innerHTML = `❤️ მომწონს${data.like_count > 0 ? ` (${data.like_count})` : ''}`;
+                        e.target.classList.add('fb-like-active');
+                    } else {
+                        e.target.innerHTML = `👍 მომწონს${data.like_count > 0 ? ` (${data.like_count})` : ''}`;
+                        e.target.classList.remove('fb-like-active');
+                    }
+                    e.target.dataset.liked = data.is_liked.toString();
+                } else {
+                    showMessage(data.error || 'ლაიქის შეცდომა', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Like error:', error);
+                showMessage('ლაიქის შეცდომა', 'error');
+            })
+            .finally(() => {
+                // Re-enable button
+                e.target.style.pointerEvents = 'auto';
+            });
         }
     });
+    
+    }); // Close DOMContentLoaded
     </script>
     <a href="/" class="btn btn-link mt-3">უკან</a>
 </div>

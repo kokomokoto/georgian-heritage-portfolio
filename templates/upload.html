@@ -141,25 +141,101 @@
             }
         });
         </script>
-        <div class="mb-3">
-            <label class="form-label">ფაილები (სურათები, docx, html)</label>
-            <input type="file" name="files" class="form-control" multiple required id="fileInput">
+        <!-- Images Section - URL Based -->
+        <div class="mb-4">
+            <h5>სურათების მართვა (URL-ებით)</h5>
+            <div id="allImagesContainer">
+                <!-- პირველი სურათი -->
+                <div class="row mb-2 image-url-row border p-2 rounded">
+                    <div class="col-md-5">
+                        <label class="form-label small">სურათის URL *</label>
+                        <input type="url" name="all_image_url_0" class="form-control" 
+                               placeholder="https://example.com/image.jpg" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">აღწერა</label>
+                        <input type="text" name="all_image_caption_0" class="form-control" 
+                               placeholder="სურათის აღწერა">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">მთავარი სურათი</label>
+                        <div class="form-check">
+                            <input type="radio" name="main_image_selector" value="0" checked class="form-check-input">
+                            <label class="form-check-label">მთავარი</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">&nbsp;</label>
+                        <button type="button" class="btn btn-danger btn-sm d-block remove-image" disabled>წაშლა</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button type="button" id="addImageUrl" class="btn btn-success btn-sm">+ ახალი სურათის დამატება</button>
+                    <small class="text-muted d-block mt-2">
+                        💡 ყველა სურათი URL-ით ატვირთეთ. მთავარი სურათი რადიო ღილაკით მონიშნეთ.
+                    </small>
+                </div>
+            </div>
         </div>
-        <div id="captionsContainer"></div>
+        
         <script>
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const container = document.getElementById('captionsContainer');
-            container.innerHTML = '';
-            Array.from(e.target.files).forEach((file, idx) => {
-                if (file.type.startsWith('image/')) {
-                    const div = document.createElement('div');
-                    div.className = 'mb-2';
-                    div.innerHTML = `<label>სურათის აღწერა (${file.name}):</label><input type="text" name="caption_${idx}" class="form-control" placeholder="სურათის აღწერა">`;
-                    container.appendChild(div);
-                }
-            });
+        let imageCount = 1;
+        
+        document.getElementById('addImageUrl').addEventListener('click', function() {
+            const container = document.getElementById('allImagesContainer');
+            const div = document.createElement('div');
+            div.className = 'row mb-2 image-url-row border p-2 rounded';
+            div.innerHTML = `
+                <div class="col-md-5">
+                    <label class="form-label small">სურათის URL</label>
+                    <input type="url" name="all_image_url_${imageCount}" class="form-control" placeholder="https://example.com/image.jpg">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">აღწერა</label>
+                    <input type="text" name="all_image_caption_${imageCount}" class="form-control" placeholder="სურათის აღწერა">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">მთავარი სურათი</label>
+                    <div class="form-check">
+                        <input type="radio" name="main_image_selector" value="${imageCount}" class="form-check-input">
+                        <label class="form-check-label">მთავარი</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-sm d-block remove-image">წაშლა</button>
+                </div>
+            `;
+            container.appendChild(div);
+            imageCount++;
+            
+            // Enable first remove button if more than 1 image
+            updateRemoveButtons();
         });
+        
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-image')) {
+                e.target.closest('.image-url-row').remove();
+                updateRemoveButtons();
+            }
+        });
+        
+        function updateRemoveButtons() {
+            const rows = document.querySelectorAll('.image-url-row');
+            rows.forEach((row, index) => {
+                const btn = row.querySelector('.remove-image');
+                btn.disabled = rows.length === 1; // Disable if only one image left
+            });
+        }
         </script>
+        
+        <div class="mb-3">
+            <label class="form-label">დოკუმენტები (docx, html ფაილები - ოფციონალური)</label>
+            <input type="file" name="files" class="form-control" multiple accept=".docx,.html,.doc">
+        </div>
         <button type="submit" class="btn btn-primary">ატვირთვა</button>
         <a href="/admin/panel" class="btn btn-link">უკან</a>
     </form>

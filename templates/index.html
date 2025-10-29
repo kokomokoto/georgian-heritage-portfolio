@@ -94,7 +94,7 @@
              onclick="window.location.href='/project/{{ project.id }}'">
             <div class="card h-100">
                 {% if project.main_image %}
-                <img src="/projects/{{ project.folder }}/{{ project.main_image }}" class="card-img-top" alt="{{ project.title }}">
+                <img src="{{ project.main_image }}" class="card-img-top" alt="{{ project.title }}">
                 {% endif %}
                 <div class="card-body">
                     <h5 class="card-title">{{ project.title }}</h5>
@@ -129,7 +129,7 @@
                     col.setAttribute('data-period-categories', project.period_categories ? project.period_categories.join(',') : '');
                     col.onclick = () => window.location.href = `/project/${project.id}`;
                     
-                    let imgHtml = project.main_image ? `<img src="/projects/${project.folder}/${project.main_image}" class="card-img-top" alt="${project.title}">` : '';
+                    let imgHtml = project.main_image ? `<img src="${project.main_image}" class="card-img-top" alt="${project.title}">` : '';
                     
                     col.innerHTML = `<div class="card h-100">${imgHtml}<div class="card-body"><h5 class="card-title">${project.title}</h5></div></div>`;
                     container.appendChild(col);

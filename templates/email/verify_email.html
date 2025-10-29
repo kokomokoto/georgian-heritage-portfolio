@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ელ.ფოსტის დადასტურება</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; }
+        .header { text-align: center; color: #333; }
+        .button { display: inline-block; padding: 12px 30px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { margin-top: 30px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>მოგესალმებით, {{ user.email }}!</h1>
+        </div>
+        
+        <p>გმადლობთ ქართული მემკვიდრეობის პორტფოლიოში რეგისტრაციისთვის!</p>
+        
+        <p>ელ.ფოსტის დასადასტურებლად, გთხოვთ დააჭიროთ ქვემოთ მოცემულ ღილაკს:</p>
+        
+        <div style="text-align: center;">
+            <a href="{{ verification_url }}" class="button">ელ.ფოსტის დადასტურება</a>
+        </div>
+        
+        <p>თუ ღილაკი არ მუშაობს, კოპირებით გადაიტანეთ ეს ლინკი ბრაუზერში:</p>
+        <p><a href="{{ verification_url }}">{{ verification_url }}</a></p>
+        
+        <div class="footer">
+            <p>თუ ეს ელ.ფოსტა თქვენ არ გაგიგზავნიათ, უბრალოდ უგულებელყავით.</p>
+            <p>&copy; 2025 ქართული მემკვიდრეობა. ყველა უფლება დაცულია.</p>
+        </div>
+    </div>
+</body>
+</html>

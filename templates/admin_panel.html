@@ -16,7 +16,7 @@
         {% for project in projects %}
         <tr>
             <td>{{ project.title }}</td>
-            <td>{% if project.main_image %}<img src="/projects/{{ project.folder }}/{{ project.main_image }}" width="80">{% endif %}</td>
+            <td>{% if project.main_image %}<img src="{{ project.main_image }}" width="80">{% endif %}</td>
             <td>
                 {% if project.type_categories %}
                     <strong>ტიპი:</strong>

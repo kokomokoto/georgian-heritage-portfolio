@@ -15,10 +15,48 @@
                 <h1 class="mb-0">
                     <a href="/" class="text-white text-decoration-none" style="cursor:pointer;">kepu</a>
                 </h1>
-                {% block filter_button %}{% endblock %}
+                
+                <div class="d-flex align-items-center">
+                    {% block filter_button %}{% endblock %}
+                    
+                    <!-- User Menu -->
+                    {% if current_user.is_authenticated %}
+                        <div class="dropdown ms-3">
+                            <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle me-2"></i>
+                                {{ current_user.email }}
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i> გასვლა
+                                </a></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <div class="ms-3">
+                            <a href="{{ url_for('login') }}" class="btn btn-outline-light me-2">შესვლა</a>
+                            <a href="{{ url_for('register') }}" class="btn btn-light">რეგისტრაცია</a>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </header>
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
     <main class="container mb-5">
         {% block content %}{% endblock %}
     </main>

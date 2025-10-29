@@ -171,41 +171,121 @@
             }
         });
         </script>
-        <div class="mb-3">
-            <label class="form-label">მთავარი ფოტო:</label>
-            <div class="mb-2">
+        <!-- Images Section - URL Based -->
+        <div class="mb-4">
+            <h5>სურათების მართვა (URL-ებით)</h5>
+            <div id="allImagesContainer">
+                <!-- ყველა სურათი ერთ კონტეინერში -->
+                
+                <!-- მთავარი სურათი თუ არსებობს -->
                 {% if project.main_image %}
-                    <img src="/projects/{{ project.folder }}/{{ project.main_image }}" width="80" class="me-2">
-                    <input type="radio" name="main_image_select" value="{{ project.main_image }}" {% if project.main_image %}checked{% endif %}> ეს არის მთავარი ფოტო
+                <div class="row mb-2 image-url-row border p-2 rounded">
+                    <div class="col-md-5">
+                        <label class="form-label small">სურათის URL</label>
+                        <input type="url" name="all_image_url_main" class="form-control" 
+                               value="{% if 'http' in project.main_image %}{{ project.main_image }}{% else %}/projects/{{ project.folder }}/{{ project.main_image }}{% endif %}" 
+                               placeholder="https://example.com/image.jpg">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">აღწერა</label>
+                        <input type="text" name="all_image_caption_main" class="form-control" 
+                               value="მთავარი სურათი" placeholder="სურათის აღწერა">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">მთავარი სურათი</label>
+                        <div class="form-check">
+                            <input type="radio" name="main_image_selector" value="main" checked class="form-check-input">
+                            <label class="form-check-label">მთავარი</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">&nbsp;</label>
+                        <button type="button" class="btn btn-danger btn-sm d-block remove-image">წაშლა</button>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- სხვა სურათები -->
+                {% if project.other_images %}
+                    {% for img in project.other_images %}
+                    <div class="row mb-2 image-url-row border p-2 rounded">
+                        <div class="col-md-5">
+                            <label class="form-label small">სურათის URL</label>
+                            <input type="url" name="all_image_url_{{ loop.index0 }}" class="form-control" 
+                                   value="{% if img.url %}{{ img.url }}{% elif img.file %}/projects/{{ project.folder }}/{{ img.file }}{% endif %}" 
+                                   placeholder="https://example.com/image.jpg">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">აღწერა</label>
+                            <input type="text" name="all_image_caption_{{ loop.index0 }}" class="form-control" 
+                                   value="{{ img.caption|default('') }}" placeholder="სურათის აღწერა">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">მთავარი სურათი</label>
+                            <div class="form-check">
+                                <input type="radio" name="main_image_selector" value="{{ loop.index0 }}" class="form-check-input"
+                                       {% if (img.file and img.file == project.main_image) or (img.url and img.url == project.main_image) %}checked{% endif %}>
+                                <label class="form-check-label">მთავარი</label>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">&nbsp;</label>
+                            <button type="button" class="btn btn-danger btn-sm d-block remove-image">წაშლა</button>
+                        </div>
+                    </div>
+                    {% endfor %}
                 {% endif %}
             </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">სხვა სურათები:</label>
-            <div id="existingImages">
-            {% for img in project.other_images %}
-                <div class="mb-2 align-items-center d-flex gap-2">
-                    {% if img.file %}
-                        <img src="/projects/{{ project.folder }}/{{ img.file }}" width="80" class="me-2">
-                        <input type="radio" name="main_image_select" value="{{ img.file }}" {% if img.file == project.main_image %}checked{% endif %}>
-                        <span class="me-2">მთავარ ფოტოდ</span>
-                        <input type="text" name="caption_existing_{{ loop.index0 }}" class="form-control d-inline-block w-auto" value="{{ img.caption }}" placeholder="სურათის აღწერა">
-                        <input type="hidden" name="existing_file_{{ loop.index0 }}" value="{{ img.file }}">
-                    {% else %}
-                        <img src="/projects/{{ project.folder }}/{{ img }}" width="80" class="me-2">
-                        <input type="radio" name="main_image_select" value="{{ img }}" {% if img == project.main_image %}checked{% endif %}>
-                        <span class="me-2">მთავარ ფოტოდ</span>
-                        <input type="text" name="caption_existing_{{ loop.index0 }}" class="form-control d-inline-block w-auto" value="" placeholder="სურათის აღწერა">
-                        <input type="hidden" name="existing_file_{{ loop.index0 }}" value="{{ img }}">
-                    {% endif %}
+            
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button type="button" id="addImageUrl" class="btn btn-success btn-sm">+ ახალი სურათის დამატება</button>
+                    <small class="text-muted d-block mt-2">
+                        💡 ყველა სურათი URL-ით ატვირთეთ. მთავარი სურათი რადიო ღილაკით მონიშნეთ.
+                    </small>
                 </div>
-            {% endfor %}
             </div>
         </div>
-        <div class="mb-3">
-            <label class="form-label">ახალი ფაილების დამატება (არასავალდებულო)</label>
-            <input type="file" name="files" class="form-control" multiple>
-        </div>
+        
+        <script>
+        // Image URL fields functionality
+        let imageCount = {{ (project.other_images|length if project.other_images else 0) + 1 }};
+        
+        document.getElementById('addImageUrl').addEventListener('click', function() {
+            const container = document.getElementById('allImagesContainer');
+            const div = document.createElement('div');
+            div.className = 'row mb-2 image-url-row border p-2 rounded';
+            div.innerHTML = `
+                <div class="col-md-5">
+                    <label class="form-label small">სურათის URL</label>
+                    <input type="url" name="all_image_url_${imageCount}" class="form-control" placeholder="https://example.com/image.jpg">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">აღწერა</label>
+                    <input type="text" name="all_image_caption_${imageCount}" class="form-control" placeholder="სურათის აღწერა">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">მთავარი სურათი</label>
+                    <div class="form-check">
+                        <input type="radio" name="main_image_selector" value="${imageCount}" class="form-check-input">
+                        <label class="form-check-label">მთავარი</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-sm d-block remove-image">წაშლა</button>
+                </div>
+            `;
+            container.appendChild(div);
+            imageCount++;
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-image')) {
+                e.target.closest('.image-url-row').remove();
+            }
+        });
+        </script>
         <button type="submit" class="btn btn-primary">შენახვა</button>
         <a href="/admin/panel" class="btn btn-link">უკან</a>
     </form>
