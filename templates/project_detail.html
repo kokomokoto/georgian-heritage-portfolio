@@ -8,9 +8,9 @@
         .loading-container {
             position: relative;
             width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 15px;
-            padding: 40px;
+            background: transparent;
+            border-radius: 0;
+            padding: 0;
             margin-bottom: 20px;
             text-align: center;
             cursor: pointer;
@@ -58,7 +58,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.3);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -74,8 +74,8 @@
             transition: all 0.3s ease;
         }
         .loading-container:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            transform: none;
+            box-shadow: none;
         }
         .loading-spinner {
             border: 4px solid #ffffff30;
@@ -95,8 +95,8 @@
         .viewer-iframe {
             width: 100%;
             border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-radius: 0;
+            box-shadow: none;
         }
         
         /* Desktop: 16:9 aspect ratio */
