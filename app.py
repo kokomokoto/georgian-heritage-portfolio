@@ -322,6 +322,77 @@ def debug():
     }
     return f"Debug info: {debug_info}"
 
+@app.route('/admin/users')
+def admin_users():
+    """Admin panel to view registered users"""
+    # Simple password protection
+    password = request.args.get('password')
+    if password != 'შენი_ძლიერი_პაროლი_2024':  # Change this password!
+        return "Access denied. Add ?password=admin123 to URL", 403
+    
+    users = User.query.all()
+    
+    users_info = []
+    for user in users:
+        users_info.append({
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'verified': user.email_verified,
+            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else 'N/A'
+        })
+    
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Admin - Users</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .verified { color: green; }
+            .not-verified { color: red; }
+        </style>
+    </head>
+    <body>
+        <h1>დარეგისტრირებული მომხმარებლები</h1>
+        <p>სულ: {} მომხმარებელი</p>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>სახელი</th>
+                <th>Email</th>
+                <th>ვერიფიცირებული</th>
+                <th>რეგისტრაციის თარიღი</th>
+            </tr>
+    """.format(len(users_info))
+    
+    for user in users_info:
+        verified_class = "verified" if user['verified'] else "not-verified"
+        verified_text = "კი ✓" if user['verified'] else "არა ✗"
+        
+        html += f"""
+            <tr>
+                <td>{user['id']}</td>
+                <td>{user['name']}</td>
+                <td>{user['email']}</td>
+                <td class="{verified_class}">{verified_text}</td>
+                <td>{user['created_at']}</td>
+            </tr>
+        """
+    
+    html += """
+        </table>
+        <br>
+        <a href="/">← მთავარ გვერდზე დაბრუნება</a>
+    </body>
+    </html>
+    """
+    
+    return html
+
 # Authentication Routes
 @app.route('/register', methods=['GET', 'POST'])
 def register():
