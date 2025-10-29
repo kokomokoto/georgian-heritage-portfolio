@@ -37,8 +37,14 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your_secret_key_here
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///portfolio.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
-app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME') or 'localhost:5001'
-app.config['PREFERRED_URL_SCHEME'] = 'http'
+
+# Only set SERVER_NAME for local development
+if os.environ.get('FLASK_ENV') != 'production':
+    app.config['SERVER_NAME'] = 'localhost:5001'
+    app.config['PREFERRED_URL_SCHEME'] = 'http'
+else:
+    # For production (Render), let Flask auto-detect the server name
+    app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 # Mail configuration
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
