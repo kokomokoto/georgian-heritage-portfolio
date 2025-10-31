@@ -561,6 +561,12 @@ def test_comment():
 @app.route('/add_comment/<project_id>', methods=['POST'])
 @login_required
 def add_comment(project_id):
+    print("\n" + "="*50)
+    print("ADD_COMMENT FUNCTION CALLED!")
+    print(f"Project ID: {project_id}")
+    print(f"Request method: {request.method}")
+    print(f"Request content type: {request.content_type}")
+    print("="*50)
     # Check if user's email is verified
     if not current_user.email_verified:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -777,6 +783,22 @@ def admin_logout():
 def admin_panel():
     projects = load_projects()
     return render_template('admin_panel.html', projects=projects)
+
+@app.route('/admin/database')
+@admin_required
+def admin_database():
+    """Admin page to view all database contents"""
+    from models import User, Comment, Like
+    
+    # Get all data from database
+    users = User.query.order_by(User.created_at.desc()).all()
+    comments = Comment.query.order_by(Comment.created_at.desc()).all()
+    likes = Like.query.order_by(Like.created_at.desc()).all()
+    
+    return render_template('admin_database.html', 
+                         users=users, 
+                         comments=comments, 
+                         likes=likes)
 
 @app.route('/admin/upload', methods=['GET', 'POST'])
 @admin_required

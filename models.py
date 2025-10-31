@@ -77,5 +77,8 @@ class Like(db.Model):
     comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Relationships
+    user = db.relationship('User', backref='user_likes')
+    
     # Ensure one like per user per comment
     __table_args__ = (db.UniqueConstraint('user_id', 'comment_id', name='unique_user_comment_like'),)

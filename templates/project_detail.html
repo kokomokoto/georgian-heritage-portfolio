@@ -630,27 +630,40 @@
         const mainTextarea = document.getElementById('main-comment-textarea');
         const mainForm = document.getElementById('comment-form');
         
-        console.log('Main textarea found:', mainTextarea);
-        console.log('Main form found:', mainForm);
+        console.log('DEBUG: JavaScript loaded successfully');
+        console.log('DEBUG: Main textarea found:', mainTextarea);
+        console.log('DEBUG: Main form found:', mainForm);
+        console.log('DEBUG: Current user authenticated:', {{ 'true' if current_user.is_authenticated else 'false' }});
         
         if (!mainTextarea) {
-            console.error('Main textarea not found!');
+            console.error('ERROR: Main textarea not found!');
+            return;
+        }
+        
+        if (!mainForm) {
+            console.error('ERROR: Main form not found!');
             return;
         }
         
         // Handle main comment form submission via AJAX
         if (mainForm) {
-            console.log('Adding event listener to main form');
+            console.log('DEBUG: Adding event listener to main form');
             mainForm.addEventListener('submit', function(e) {
-                console.log('Form submit event triggered');
+                console.log('DEBUG: ===== FORM SUBMIT EVENT TRIGGERED =====');
+                console.log('DEBUG: Event:', e);
+                console.log('DEBUG: Preventing default...');
                 e.preventDefault();
                 
                 const formData = new FormData(this);
                 const submitBtn = this.querySelector('button[type="submit"]');
                 const commentText = formData.get('comment');
                 
-                console.log('Comment text:', commentText);
-                console.log('Selected files:', selectedFiles);
+                console.log('DEBUG: Comment text:', commentText);
+                console.log('DEBUG: Selected files:', selectedFiles);
+                console.log('DEBUG: FormData entries:');
+                for (let [key, value] of formData.entries()) {
+                    console.log(`DEBUG: ${key}:`, value);
+                }
                 
                 // Add selected files to FormData manually
                 if (selectedFiles && selectedFiles.length > 0) {
