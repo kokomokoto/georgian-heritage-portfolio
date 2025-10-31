@@ -168,7 +168,7 @@ def save_comments(comments):
     with open(COMMENTS_JSON, 'w', encoding='utf-8') as f:
         json.dump(comments, f, ensure_ascii=False, indent=2)
 
-def login_required(f):
+def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('logged_in'):
@@ -179,7 +179,7 @@ def login_required(f):
 # Routes
 
 @app.route('/admin/edit/<project_id>', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def edit_project(project_id):
     projects = load_projects()
     project = next((p for p in projects if p['id'] == project_id), None)
@@ -749,13 +749,13 @@ def admin_logout():
     return redirect(url_for('index'))
 
 @app.route('/admin/panel')
-@login_required
+@admin_required
 def admin_panel():
     projects = load_projects()
     return render_template('admin_panel.html', projects=projects)
 
 @app.route('/admin/upload', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def upload_project():
     if request.method == 'POST':
         title = request.form['title']
@@ -865,7 +865,7 @@ def upload_project():
     return render_template('upload.html')
 
 @app.route('/admin/delete/<project_id>', methods=['POST'])
-@login_required
+@admin_required
 def delete_project(project_id):
     # Remove project folder and update projects.json
     project_path = os.path.join(PROJECTS_DIR, project_id)
