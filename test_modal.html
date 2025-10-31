@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Modal Test</title>
+    <style>
+        .test-image {
+            width: 200px;
+            cursor: pointer;
+            border: 2px solid blue;
+            margin: 20px;
+        }
+        
+        .image-modal {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0, 0, 0, 0.95) !important;
+            z-index: 999999 !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer;
+        }
+        
+        .modal-image {
+            max-width: 95vw !important;
+            max-height: 95vh !important;
+            object-fit: contain !important;
+            border-radius: 8px;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Modal Test</h1>
+    <img src="https://res.cloudinary.com/dz7pks0u0/image/upload/v1761913392/comments/comment_1761913393_2_.png.png" 
+         class="test-image" 
+         onclick="openModal(this.src)" 
+         alt="Test Image">
+    
+    <div id="imageModal" class="image-modal" onclick="closeModal()">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <img id="modalImage" class="modal-image">
+    </div>
+    
+    <script>
+        function openModal(src) {
+            console.log('Opening modal with:', src);
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            
+            modalImage.src = src;
+            modal.style.display = 'flex';
+            console.log('Modal opened');
+        }
+        
+        function closeModal() {
+            console.log('Closing modal');
+            const modal = document.getElementById('imageModal');
+            modal.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

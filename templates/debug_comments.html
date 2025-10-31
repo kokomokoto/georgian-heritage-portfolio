@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Debug Comments - {{ project.title }}{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>Debug: Comments for {{ project.title }}</h1>
+    
+    <!-- Debug Modal (copied from our working version) -->
+    <div id="imageModal" onclick="closeImageModal()" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.9);
+        z-index: 999999;
+        cursor: pointer;
+    ">
+        <div style="
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        ">
+            <img id="modalImage" style="
+                max-width: 95vw;
+                max-height: 95vh;
+                object-fit: contain;
+                border-radius: 8px;
+                box-shadow: 0 0 50px rgba(255,255,255,0.1);
+            ">
+            <div onclick="closeImageModal()" style="
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                color: white;
+                font-size: 40px;
+                cursor: pointer;
+                background: rgba(0,0,0,0.5);
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+            ">&times;</div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <h3>Comments Debug ({{ comments|length }} total)</h3>
+            
+            {% for comment in comments %}
+            <div style="border: 2px solid {% if comment.media_url %}green{% else %}red{% endif %}; margin: 10px; padding: 10px;">
+                <h5>Comment #{{ comment.id }}</h5>
+                <p><strong>Content:</strong> "{{ comment.content }}"</p>
+                <p><strong>Media URL:</strong> "{{ comment.media_url }}"</p>
+                <p><strong>Has media_url:</strong> {{ comment.media_url is not none }}</p>
+                
+                {% if comment.media_url %}
+                <div style="background: lightgreen; padding: 10px; margin: 5px 0;">
+                    <p><strong>✅ HAS MEDIA URL</strong></p>
+                    <p>URL starts with http: {{ comment.media_url.startswith('http') }}</p>
+                    <p>URL ends with image ext: {{ comment.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) }}</p>
+                    <p>URL contains 'image': {{ 'image' in comment.media_url }}</p>
+                    
+                    <!-- Show the actual image -->
+                    <div style="border: 2px solid blue; padding: 10px; margin: 10px 0;">
+                        <p><strong>Image Preview:</strong></p>
+                        <img src="{{ comment.media_url }}" 
+                             onclick="openImageModal(this.src)" 
+                             style="max-width: 200px; cursor: pointer; border: 3px solid red;" 
+                             alt="Comment Image"
+                             onerror="this.style.border='3px solid red'; this.alt='IMAGE FAILED TO LOAD';">
+                        <p><em>Click image above to test modal</em></p>
+                    </div>
+                </div>
+                {% else %}
+                <div style="background: lightcoral; padding: 10px; margin: 5px 0;">
+                    <p><strong>❌ NO MEDIA URL</strong></p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Simple modal functions
+    function openImageModal(src) {
+        console.log('DEBUG: Opening modal with image:', src);
+        
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        
+        if (modal && modalImage) {
+            modalImage.src = src;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            console.log('DEBUG: Modal should be visible now');
+        } else {
+            console.error('DEBUG: Modal elements not found!');
+        }
+    }
+
+    function closeImageModal() {
+        console.log('DEBUG: Closing modal');
+        const modal = document.getElementById('imageModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            console.log('DEBUG: Modal closed');
+        }
+    }
+
+    console.log('DEBUG: Debug page loaded');
+</script>
+{% endblock %}

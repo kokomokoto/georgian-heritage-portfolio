@@ -550,6 +550,24 @@ def project_detail(project_id):
             description = clean_description(f.read())
     return render_template('project_detail.html', project=project, comments=comments, description=description)
 
+@app.route('/debug/project/<project_id>')
+def debug_project_detail(project_id):
+    """Debug version of project detail to test comments and images"""
+    projects = load_projects()
+    project = next((p for p in projects if p['id'] == project_id), None)
+    if not project:
+        return 'Project not found', 404
+    
+    # Load comments from database
+    comments = Comment.query.filter_by(project_id=project_id, parent_id=None).order_by(Comment.created_at.desc()).all()
+    
+    return render_template('debug_comments.html', project=project, comments=comments)
+
+@app.route('/test-modal')
+def test_modal():
+    """Serve simple modal test page"""
+    return send_from_directory('.', 'test_modal_simple.html')
+
 @app.route('/test-comment')
 def test_comment():
     print(f"Current user: {current_user}")
@@ -702,20 +720,20 @@ def toggle_like(comment_id):
     })
 
 @app.route('/delete_comment/<int:comment_id>/<project_id>', methods=['POST'])
-@login_required
 def delete_comment(comment_id, project_id):
     comment = Comment.query.get_or_404(comment_id)
     
     # Check if user can delete this comment
     can_delete = False
     
-    # Check if it's the comment author
-    if comment.user_id == current_user.id:
+    # For registered users - check if it's their comment
+    if current_user.is_authenticated and comment.user_id == current_user.id:
         can_delete = True
     
-    # Check if it's an admin user (if you have admin functionality)
-    # if hasattr(current_user, 'is_admin') and current_user.is_admin:
-    #     can_delete = True
+    # For email-based deletion - check provided email
+    author_email = request.form.get('author_email')
+    if author_email and comment.author and comment.author.email == author_email.strip():
+        can_delete = True
     
     if not can_delete:
         flash('თქვენ არ გაქვთ ამ კომენტარის წაშლის უფლება.', 'error')
@@ -735,29 +753,6 @@ def delete_comment(comment_id, project_id):
     except Exception as e:
         db.session.rollback()
         flash('კომენტარის წაშლისას დაფიქსირდა შეცდომა.', 'error')
-        print(f"Error deleting comment: {e}")
-    
-    return redirect(url_for('project_detail', project_id=project_id))
-    
-    # Check if it's a registered user's own comment
-    if current_user.is_authenticated and comment.user_id == current_user.id:
-        can_delete = True
-    
-    if not can_delete:
-        flash('თქვენ არ გაქვთ ამ კომენტარის წაშლის უფლება.', 'error')
-        return redirect(url_for('project_detail', project_id=project_id))
-    
-    try:
-        # Delete all replies to this comment first
-        Comment.query.filter_by(parent_id=comment_id).delete()
-        
-        # Delete the comment itself
-        db.session.delete(comment)
-        db.session.commit()
-        flash('კომენტარი წარმატებით წაიშალა!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash('კომენტარის წაშლისას შეცდომა მოხდა.', 'error')
         print(f"Error deleting comment: {e}")
     
     return redirect(url_for('project_detail', project_id=project_id))
