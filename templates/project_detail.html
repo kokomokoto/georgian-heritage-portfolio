@@ -426,7 +426,7 @@
                             <div class="fb-comment-body">
                                 <div class="fb-comment-content" style="font-size: 14px;">
                                     {% if reply.author %}
-                                        <strong>{{ reply.author.email }}</strong><br>
+                                        <strong>{{ reply.author.name }}</strong><br>
                                     {% endif %}
                                     {% if reply.content %}{{ reply.content }}{% endif %}
                                     {% if reply.media %}
@@ -501,7 +501,7 @@
                                         <div class="fb-comment-body">
                                             <div class="fb-comment-content" style="font-size: 13px;">
                                                 {% if nested_reply.author %}
-                                                    <strong>{{ nested_reply.author.email }}</strong><br>
+                                                    <strong>{{ nested_reply.author.name }}</strong><br>
                                                 {% endif %}
                                                 {% if nested_reply.content %}{{ nested_reply.content }}{% endif %}
                                                 {% if nested_reply.media %}
