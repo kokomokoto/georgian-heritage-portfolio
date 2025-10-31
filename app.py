@@ -90,8 +90,8 @@ PROJECTS_DIR = 'projects'
 PROJECTS_JSON = 'projects.json'
 COMMENTS_JSON = 'comments.json'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi'}
-ADMIN_USERNAME = 'admin'
-ADMIN_PASSWORD = 'password'  # Change this in production
+ADMIN_USERNAME = 'შენი_ადმინი'
+ADMIN_PASSWORD = 'შენი_ძლიერი_პაროლი_2024'  # შეცვალე production-ში
 
 # Helpers
 
@@ -865,7 +865,7 @@ def cloud_admin():
     if request.method == 'POST':
         password = request.form.get('password')
         # Change this to your admin password
-        if password == 'admin123':  # Change this!
+        if password == 'შენი_ახალი_პაროლი_2024':  # შენი ახალი უსაფრთხო პაროლი!
             session['cloud_admin'] = True
             return redirect(url_for('cloud_admin'))
         else:
