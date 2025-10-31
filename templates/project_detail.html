@@ -340,22 +340,22 @@
                             <strong>{{ comment.author.name }}</strong><br>
                         {% endif %}
                         {% if comment.content %}{{ comment.content }}{% endif %}
-                        {% if comment.media %}
+                        {% if comment.media_url %}
                         <div class="fb-comment-media">
-                            {% if comment.media.startswith('http') %}
-                                {% if comment.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in comment.media %}
-                                <img src="{{ comment.media }}" onclick="openImageModal(this.src)" style="max-width: 300px; border-radius: 8px;">
-                                {% elif comment.media.endswith(('.mp4', '.webm', '.ogg')) or 'video' in comment.media %}
+                            {% if comment.media_url.startswith('http') %}
+                                {% if comment.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in comment.media_url %}
+                                <img src="{{ comment.media_url }}" onclick="openImageModal(this.src)" style="max-width: 300px; border-radius: 8px;">
+                                {% elif comment.media_url.endswith(('.mp4', '.webm', '.ogg')) or 'video' in comment.media_url %}
                                 <video controls style="max-width: 300px; border-radius: 8px;">
-                                    <source src="{{ comment.media }}">
+                                    <source src="{{ comment.media_url }}">
                                 </video>
                                 {% endif %}
                             {% else %}
-                                {% if comment.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
-                                <img src="/projects/{{ project.folder }}/comments/{{ comment.media }}" onclick="openImageModal(this.src)" style="max-width: 300px; border-radius: 8px;">
-                                {% elif comment.media.endswith(('.mp4', '.webm', '.ogg')) %}
+                                {% if comment.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                <img src="/projects/{{ project.folder }}/comments/{{ comment.media_url }}" onclick="openImageModal(this.src)" style="max-width: 300px; border-radius: 8px;">
+                                {% elif comment.media_url.endswith(('.mp4', '.webm', '.ogg')) %}
                                 <video controls style="max-width: 300px; border-radius: 8px;">
-                                    <source src="/projects/{{ project.folder }}/comments/{{ comment.media }}">
+                                    <source src="/projects/{{ project.folder }}/comments/{{ comment.media_url }}">
                                 </video>
                                 {% endif %}
                             {% endif %}
@@ -429,22 +429,22 @@
                                         <strong>{{ reply.author.name }}</strong><br>
                                     {% endif %}
                                     {% if reply.content %}{{ reply.content }}{% endif %}
-                                    {% if reply.media %}
+                                    {% if reply.media_url %}
                                     <div class="fb-comment-media">
-                                        {% if reply.media.startswith('http') %}
-                                            {% if reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in reply.media %}
-                                            <img src="{{ reply.media }}" style="max-width: 200px; border-radius: 8px;" onclick="openImageModal(this.src)">
-                                            {% elif reply.media.endswith(('.mp4', '.webm', '.ogg')) or 'video' in reply.media %}
+                                        {% if reply.media_url.startswith('http') %}
+                                            {% if reply.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in reply.media_url %}
+                                            <img src="{{ reply.media_url }}" style="max-width: 200px; border-radius: 8px;" onclick="openImageModal(this.src)">
+                                            {% elif reply.media_url.endswith(('.mp4', '.webm', '.ogg')) or 'video' in reply.media_url %}
                                             <video controls style="max-width: 200px; border-radius: 8px;">
-                                                <source src="{{ reply.media }}">
+                                                <source src="{{ reply.media_url }}">
                                             </video>
                                             {% endif %}
                                         {% else %}
-                                            {% if reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
-                                            <img src="/projects/{{ project.folder }}/comments/{{ reply.media }}" style="max-width: 200px; border-radius: 8px;" onclick="openImageModal(this.src)">
-                                            {% elif reply.media.endswith(('.mp4', '.webm', '.ogg')) %}
+                                            {% if reply.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                            <img src="/projects/{{ project.folder }}/comments/{{ reply.media_url }}" style="max-width: 200px; border-radius: 8px;" onclick="openImageModal(this.src)">
+                                            {% elif reply.media_url.endswith(('.mp4', '.webm', '.ogg')) %}
                                             <video controls style="max-width: 200px; border-radius: 8px;">
-                                                <source src="/projects/{{ project.folder }}/comments/{{ reply.media }}">
+                                                <source src="/projects/{{ project.folder }}/comments/{{ reply.media_url }}">
                                             </video>
                                             {% endif %}
                                         {% endif %}
@@ -504,22 +504,22 @@
                                                     <strong>{{ nested_reply.author.name }}</strong><br>
                                                 {% endif %}
                                                 {% if nested_reply.content %}{{ nested_reply.content }}{% endif %}
-                                                {% if nested_reply.media %}
+                                                {% if nested_reply.media_url %}
                                                 <div class="fb-comment-media">
-                                                    {% if nested_reply.media.startswith('http') %}
-                                                        {% if nested_reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in nested_reply.media %}
-                                                        <img src="{{ nested_reply.media }}" style="max-width: 150px; border-radius: 8px;" onclick="openImageModal(this.src)">
-                                                        {% elif nested_reply.media.endswith(('.mp4', '.webm', '.ogg')) or 'video' in nested_reply.media %}
+                                                    {% if nested_reply.media_url.startswith('http') %}
+                                                        {% if nested_reply.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in nested_reply.media_url %}
+                                                        <img src="{{ nested_reply.media_url }}" style="max-width: 150px; border-radius: 8px;" onclick="openImageModal(this.src)">
+                                                        {% elif nested_reply.media_url.endswith(('.mp4', '.webm', '.ogg')) or 'video' in nested_reply.media_url %}
                                                         <video controls style="max-width: 150px; border-radius: 8px;">
-                                                            <source src="{{ nested_reply.media }}">
+                                                            <source src="{{ nested_reply.media_url }}">
                                                         </video>
                                                         {% endif %}
                                                     {% else %}
-                                                        {% if nested_reply.media.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
-                                                        <img src="/projects/{{ project.folder }}/comments/{{ nested_reply.media }}" style="max-width: 150px; border-radius: 8px;" onclick="openImageModal(this.src)">
-                                                        {% elif nested_reply.media.endswith(('.mp4', '.webm', '.ogg')) %}
+                                                        {% if nested_reply.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                                        <img src="/projects/{{ project.folder }}/comments/{{ nested_reply.media_url }}" style="max-width: 150px; border-radius: 8px;" onclick="openImageModal(this.src)">
+                                                        {% elif nested_reply.media_url.endswith(('.mp4', '.webm', '.ogg')) %}
                                                         <video controls style="max-width: 150px; border-radius: 8px;">
-                                                            <source src="/projects/{{ project.folder }}/comments/{{ nested_reply.media }}">
+                                                            <source src="/projects/{{ project.folder }}/comments/{{ nested_reply.media_url }}">
                                                         </video>
                                                         {% endif %}
                                                     {% endif %}
