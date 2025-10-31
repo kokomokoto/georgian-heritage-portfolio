@@ -797,6 +797,56 @@ def admin_panel():
     projects = load_projects()
     return render_template('admin_panel.html', projects=projects)
 
+@app.route('/debug/cloudinary')
+def debug_cloudinary():
+    """Debug endpoint to check Cloudinary configuration"""
+    
+    # Check environment variables
+    env_info = {
+        'CLOUDINARY_CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', 'NOT SET'),
+        'CLOUDINARY_API_KEY': 'SET' if os.environ.get('CLOUDINARY_API_KEY') else 'NOT SET',
+        'CLOUDINARY_API_SECRET': 'SET' if os.environ.get('CLOUDINARY_API_SECRET') else 'NOT SET',
+        'DATABASE_URL': 'SET' if os.environ.get('DATABASE_URL') else 'NOT SET (local SQLite)',
+        'ENVIRONMENT': 'PRODUCTION' if os.environ.get('DATABASE_URL') else 'DEVELOPMENT'
+    }
+    
+    # Test Cloudinary connection
+    cloudinary_status = 'UNKNOWN'
+    cloudinary_error = None
+    
+    try:
+        import cloudinary.api
+        result = cloudinary.api.ping()
+        cloudinary_status = 'CONNECTED'
+        cloudinary_info = result
+    except Exception as e:
+        cloudinary_status = 'ERROR'
+        cloudinary_error = str(e)
+        cloudinary_info = None
+    
+    # Check recent uploads
+    recent_uploads = []
+    try:
+        cloudinary_result = cloudinary.api.resources(
+            type="upload",
+            prefix="comments/",
+            max_results=5
+        )
+        recent_uploads = cloudinary_result.get('resources', [])
+    except Exception as e:
+        recent_uploads = [{'error': str(e)}]
+    
+    debug_data = {
+        'environment': env_info,
+        'cloudinary_status': cloudinary_status,
+        'cloudinary_error': cloudinary_error,
+        'cloudinary_info': cloudinary_info,
+        'recent_uploads': recent_uploads,
+        'timestamp': time.time()
+    }
+    
+    return jsonify(debug_data)
+
 @app.route('/cloud-admin', methods=['GET', 'POST'])
 def cloud_admin():
     """Admin panel for viewing cloud database"""
