@@ -650,10 +650,20 @@
                 const commentText = formData.get('comment');
                 
                 console.log('Comment text:', commentText);
+                console.log('Selected files:', selectedFiles);
                 
-                // Check if comment has content
-                if (!commentText || commentText.trim() === '') {
-                    showMessage('გთხოვთ დაწერეთ კომენტარი', 'error');
+                // Add selected files to FormData manually
+                if (selectedFiles && selectedFiles.length > 0) {
+                    // Remove any existing media from FormData
+                    formData.delete('media');
+                    // Add the first selected file (for now, until backend supports multiple)
+                    formData.append('media', selectedFiles[0]);
+                    console.log('Added file to FormData:', selectedFiles[0].name);
+                }
+                
+                // Check if comment has content or media
+                if ((!commentText || commentText.trim() === '') && (!selectedFiles || selectedFiles.length === 0)) {
+                    showMessage('გთხოვთ დაწერეთ კომენტარი ან ატვირთეთ მედია', 'error');
                     return;
                 }
                 
@@ -687,7 +697,7 @@
                         // Clear form
                         this.reset();
                         mainTextarea.style.height = 'auto';
-                        removeMedia();
+                        removeAllMedia(); // Clear selected files and preview
                         
                         // Show success message
                         showMessage('კომენტარი წარმატებით დაემატა!', 'success');

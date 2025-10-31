@@ -38,13 +38,19 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlit
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
+# Session configuration for better persistence
+app.config['SESSION_PERMANENT'] = True
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+
+# Remove SERVER_NAME for now as it can cause session issues
 # Only set SERVER_NAME for local development
-if os.environ.get('FLASK_ENV') != 'production':
-    app.config['SERVER_NAME'] = 'localhost:5001'
-    app.config['PREFERRED_URL_SCHEME'] = 'http'
-else:
-    # For production (Render), let Flask auto-detect the server name
-    app.config['PREFERRED_URL_SCHEME'] = 'https'
+# if os.environ.get('FLASK_ENV') != 'production':
+#     app.config['SERVER_NAME'] = 'localhost:5001'
+#     app.config['PREFERRED_URL_SCHEME'] = 'http'
+# else:
+#     # For production (Render), let Flask auto-detect the server name
+#     app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 # Mail configuration
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
