@@ -807,6 +807,53 @@ def admin_panel():
     projects = load_projects()
     return render_template('admin_panel.html', projects=projects)
 
+@app.route('/debug/database')
+def debug_database():
+    """Debug endpoint to check database status and backup"""
+    
+    # Database info
+    db_info = {
+        'ENVIRONMENT': 'PRODUCTION' if os.environ.get('DATABASE_URL') else 'DEVELOPMENT',
+        'DATABASE_URL': 'SET' if os.environ.get('DATABASE_URL') else 'NOT SET (local SQLite)',
+        'SQLALCHEMY_DATABASE_URI': app.config['SQLALCHEMY_DATABASE_URI'][:50] + '...' if len(app.config['SQLALCHEMY_DATABASE_URI']) > 50 else app.config['SQLALCHEMY_DATABASE_URI']
+    }
+    
+    # Count records
+    try:
+        users_count = User.query.count()
+        comments_count = Comment.query.count()
+        likes_count = Like.query.count()
+        
+        db_stats = {
+            'users': users_count,
+            'comments': comments_count,
+            'likes': likes_count,
+            'total_records': users_count + comments_count + likes_count
+        }
+    except Exception as e:
+        db_stats = {'error': str(e)}
+    
+    # Recent activity
+    try:
+        recent_users = User.query.order_by(User.created_at.desc()).limit(3).all()
+        recent_comments = Comment.query.order_by(Comment.created_at.desc()).limit(3).all()
+        
+        recent_activity = {
+            'recent_users': [{'id': u.id, 'name': u.name, 'email': u.email, 'created_at': u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else 'N/A'} for u in recent_users],
+            'recent_comments': [{'id': c.id, 'content': c.content[:50] + '...' if c.content and len(c.content) > 50 else c.content, 'author': c.author.name if c.author else 'Unknown', 'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else 'N/A'} for c in recent_comments]
+        }
+    except Exception as e:
+        recent_activity = {'error': str(e)}
+    
+    debug_data = {
+        'database_info': db_info,
+        'statistics': db_stats,
+        'recent_activity': recent_activity,
+        'timestamp': time.time()
+    }
+    
+    return jsonify(debug_data)
+
 @app.route('/debug/cloudinary')
 def debug_cloudinary():
     """Debug endpoint to check Cloudinary configuration"""
