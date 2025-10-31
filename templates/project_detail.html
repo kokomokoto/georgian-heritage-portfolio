@@ -384,6 +384,7 @@
                     </div>
                     
                     <!-- Reply form for this comment -->
+                    {% if current_user.is_authenticated %}
                     <div class="reply-form" id="reply-form-{{ comment.id if comment.id else loop.index0 }}" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #1877f2;">
                         <div class="fb-compose">
                             <div class="fb-comment-avatar" style="width: 28px; height: 28px;">
@@ -391,14 +392,6 @@
                             </div>
                             <div class="fb-compose-container">
                                 <form method="post" action="/add_comment/{{ project.id }}" enctype="multipart/form-data">
-                                    <div class="row mb-2">
-                                        <div class="col-8">
-                                            <input type="text" name="author_name" class="form-control" placeholder="თქვენი სახელი..." required style="border-radius: 15px; border: 1px solid #ddd; padding: 6px 10px; font-size: 13px;">
-                                        </div>
-                                        <div class="col-4">
-                                            <input type="email" name="author_email" class="form-control" placeholder="ემეილი" style="border-radius: 15px; border: 1px solid #ddd; padding: 6px 10px; font-size: 12px;">
-                                        </div>
-                                    </div>
                                     <textarea name="comment" class="fb-compose-input" placeholder="პასუხი ამ კომენტარზე..." rows="2" style="font-size: 14px;"></textarea>
                                     <div class="fb-compose-actions">
                                         <svg class="fb-icon photo-icon-reply" viewBox="0 0 24 24" fill="currentColor">
@@ -417,6 +410,11 @@
                             </div>
                         </div>
                     </div>
+                    {% else %}
+                    <div class="reply-form" id="reply-form-{{ comment.id if comment.id else loop.index0 }}" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #1877f2; text-align: center;">
+                        <p style="margin: 0; color: #65676b; font-size: 13px;">პასუხისთვის საჭიროა <a href="{{ url_for('login') }}">შესვლა</a></p>
+                    </div>
+                    {% endif %}
                     
                     {% if comment.replies %}
                     <div class="fb-replies">
@@ -460,6 +458,7 @@
                                 </div>
                                 
                                 <!-- Reply form for this reply -->
+                                {% if current_user.is_authenticated %}
                                 <div class="reply-form" id="reply-form-{{ reply.id if reply.id else loop.index0 }}" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #1877f2;">
                                     <div class="fb-compose">
                                         <div class="fb-comment-avatar" style="width: 24px; height: 24px;">
@@ -485,6 +484,11 @@
                                         </div>
                                     </div>
                                 </div>
+                                {% else %}
+                                <div class="reply-form" id="reply-form-{{ reply.id if reply.id else loop.index0 }}" style="margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #1877f2; text-align: center;">
+                                    <p style="margin: 0; color: #65676b; font-size: 12px;">პასუხისთვის საჭიროა <a href="{{ url_for('login') }}">შესვლა</a></p>
+                                </div>
+                                {% endif %}
                                 
                                 <!-- Show nested replies (replies to this reply) -->
                                 {% if reply.replies %}
