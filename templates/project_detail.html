@@ -340,29 +340,33 @@
                             <strong>{{ comment.author.name }}</strong><br>
                         {% endif %}
                         {% if comment.content %}{{ comment.content }}{% endif %}
-                        {% if comment.media_url %}
+                        {% if comment.has_media() %}
                         <div class="fb-comment-media">
-                            {% if comment.media_url.startswith('http') %}
-                                {% if comment.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in comment.media_url %}
-                                <a href="{{ comment.media_url }}" class="glightbox" data-gallery="comments" data-title="კომენტარის სურათი #{{ comment.id }}">
-                                    <img src="{{ comment.media_url }}" 
-                                         style="max-width: 300px; border-radius: 8px; cursor: pointer;" 
-                                         alt="Comment Image {{ comment.id }}">
-                                </a>
-                                {% elif comment.media_url.endswith(('.mp4', '.webm', '.ogg')) or 'video' in comment.media_url %}
-                                <video controls style="max-width: 300px; border-radius: 8px;">
-                                    <source src="{{ comment.media_url }}">
-                                </video>
+                            {% for media_url in comment.get_media_urls() %}
+                            <div class="media-item" style="margin: 5px 0;">
+                                {% if media_url.startswith('http') %}
+                                    {% if media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in media_url %}
+                                    <a href="{{ media_url }}" class="glightbox" data-gallery="comments-{{ comment.id }}" data-title="კომენტარის სურათი #{{ comment.id }}">
+                                        <img src="{{ media_url }}" 
+                                             style="max-width: 300px; margin: 2px; border-radius: 8px; cursor: pointer;" 
+                                             alt="Comment Image {{ comment.id }}">
+                                    </a>
+                                    {% elif media_url.endswith(('.mp4', '.webm', '.ogg')) or 'video' in media_url %}
+                                    <video controls style="max-width: 300px; margin: 2px; border-radius: 8px;">
+                                        <source src="{{ media_url }}">
+                                    </video>
+                                    {% endif %}
+                                {% else %}
+                                    {% if media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                    <img src="/projects/{{ project.folder }}/comments/{{ media_url }}" onclick="openImageModal(this.src)" style="max-width: 300px; margin: 2px; border-radius: 8px;">
+                                    {% elif media_url.endswith(('.mp4', '.webm', '.ogg')) %}
+                                    <video controls style="max-width: 300px; margin: 2px; border-radius: 8px;">
+                                        <source src="/projects/{{ project.folder }}/comments/{{ media_url }}">
+                                    </video>
+                                    {% endif %}
                                 {% endif %}
-                            {% else %}
-                                {% if comment.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
-                                <img src="/projects/{{ project.folder }}/comments/{{ comment.media_url }}" onclick="openImageModal(this.src)" style="max-width: 300px; border-radius: 8px;">
-                                {% elif comment.media_url.endswith(('.mp4', '.webm', '.ogg')) %}
-                                <video controls style="max-width: 300px; border-radius: 8px;">
-                                    <source src="/projects/{{ project.folder }}/comments/{{ comment.media_url }}">
-                                </video>
-                                {% endif %}
-                            {% endif %}
+                            </div>
+                            {% endfor %}
                         </div>
                         {% endif %}
                     </div>
@@ -433,27 +437,31 @@
                                         <strong>{{ reply.author.name }}</strong><br>
                                     {% endif %}
                                     {% if reply.content %}{{ reply.content }}{% endif %}
-                                    {% if reply.media_url %}
+                                    {% if reply.has_media() %}
                                     <div class="fb-comment-media">
-                                        {% if reply.media_url.startswith('http') %}
-                                            {% if reply.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in reply.media_url %}
-                                            <a href="{{ reply.media_url }}" class="glightbox" data-gallery="comments" data-title="პასუხის სურათი #{{ reply.id }}">
-                                                <img src="{{ reply.media_url }}" style="max-width: 200px; border-radius: 8px; cursor: pointer;">
-                                            </a>
-                                            {% elif reply.media_url.endswith(('.mp4', '.webm', '.ogg')) or 'video' in reply.media_url %}
-                                            <video controls style="max-width: 200px; border-radius: 8px;">
-                                                <source src="{{ reply.media_url }}">
-                                            </video>
+                                        {% for media_url in reply.get_media_urls() %}
+                                        <div class="media-item" style="margin: 5px 0;">
+                                            {% if media_url.startswith('http') %}
+                                                {% if media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in media_url %}
+                                                <a href="{{ media_url }}" class="glightbox" data-gallery="comments-{{ reply.id }}" data-title="პასუხის სურათი #{{ reply.id }}">
+                                                    <img src="{{ media_url }}" style="max-width: 200px; margin: 2px; border-radius: 8px; cursor: pointer;">
+                                                </a>
+                                                {% elif media_url.endswith(('.mp4', '.webm', '.ogg')) or 'video' in media_url %}
+                                                <video controls style="max-width: 200px; margin: 2px; border-radius: 8px;">
+                                                    <source src="{{ media_url }}">
+                                                </video>
+                                                {% endif %}
+                                            {% else %}
+                                                {% if media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
+                                                <img src="/projects/{{ project.folder }}/comments/{{ media_url }}" style="max-width: 200px; margin: 2px; border-radius: 8px;" onclick="openImageModal(this.src)">
+                                                {% elif media_url.endswith(('.mp4', '.webm', '.ogg')) %}
+                                                <video controls style="max-width: 200px; margin: 2px; border-radius: 8px;">
+                                                    <source src="/projects/{{ project.folder }}/comments/{{ media_url }}">
+                                                </video>
+                                                {% endif %}
                                             {% endif %}
-                                        {% else %}
-                                            {% if reply.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) %}
-                                            <img src="/projects/{{ project.folder }}/comments/{{ reply.media_url }}" style="max-width: 200px; border-radius: 8px;" onclick="openImageModal(this.src)">
-                                            {% elif reply.media_url.endswith(('.mp4', '.webm', '.ogg')) %}
-                                            <video controls style="max-width: 200px; border-radius: 8px;">
-                                                <source src="/projects/{{ project.folder }}/comments/{{ reply.media_url }}">
-                                            </video>
-                                            {% endif %}
-                                        {% endif %}
+                                        </div>
+                                        {% endfor %}
                                     </div>
                                     {% endif %}
                                 </div>
@@ -601,8 +609,9 @@
                 
                 <!-- Media Preview -->
                 <div class="fb-preview" id="media-preview" style="display: none;">
-                    <span>არჩეული ფაილი: </span>
-                    <button type="button" class="fb-remove-media" onclick="removeMedia()">×</button>
+                    <div style="margin-bottom: 10px; font-weight: bold;">არჩეული ფაილები:</div>
+                    <div id="preview-container" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="removeAllMedia()">ყველა ფაილის მოცილება</button>
                 </div>
             </div>
         </div>
@@ -904,9 +913,11 @@
                 if (selectedFiles && selectedFiles.length > 0) {
                     // Remove any existing media from FormData
                     formData.delete('media');
-                    // Add the first selected file (for now, until backend supports multiple)
-                    formData.append('media', selectedFiles[0]);
-                    console.log('Added file to FormData:', selectedFiles[0].name);
+                    // Add all selected files
+                    selectedFiles.forEach((file, index) => {
+                        formData.append('media', file);
+                        console.log(`Added file ${index + 1} to FormData:`, file.name);
+                    });
                 }
                 
                 // Check if comment has content or media
@@ -972,6 +983,20 @@
             const commentsContainer = document.querySelector('.fb-comments');
             if (!commentsContainer) return;
             
+            // Generate media HTML for multiple files
+            let mediaHtml = '';
+            if (comment.media_urls && comment.media_urls.length > 0) {
+                mediaHtml = '<div class="fb-comment-media">';
+                comment.media_urls.forEach((mediaUrl, index) => {
+                    if (mediaUrl.endsWith('.jpg') || mediaUrl.endsWith('.jpeg') || mediaUrl.endsWith('.png') || mediaUrl.endsWith('.gif') || mediaUrl.includes('image')) {
+                        mediaHtml += `<div class="media-item" style="margin: 2px;"><a href="${mediaUrl}" class="glightbox" data-gallery="comments-${comment.id}" data-title="ახალი კომენტარის სურათი ${index + 1}"><img src="${mediaUrl}" style="max-width: 300px; margin: 2px; border-radius: 8px; cursor: pointer;"></a></div>`;
+                    } else if (mediaUrl.endsWith('.mp4') || mediaUrl.endsWith('.webm') || mediaUrl.endsWith('.ogg') || mediaUrl.includes('video')) {
+                        mediaHtml += `<div class="media-item" style="margin: 2px;"><video controls style="max-width: 300px; margin: 2px; border-radius: 8px;"><source src="${mediaUrl}"></video></div>`;
+                    }
+                });
+                mediaHtml += '</div>';
+            }
+            
             const commentHtml = `
                 <div class="fb-comment">
                     <div class="fb-comment-avatar">👤</div>
@@ -979,7 +1004,7 @@
                         <div class="fb-comment-content">
                             <strong>${comment.author.name}</strong><br>
                             ${comment.content}
-                            ${comment.media_url ? `<div class="fb-comment-media"><a href="${comment.media_url}" class="glightbox" data-gallery="comments" data-title="ახალი კომენტარის სურათი"><img src="${comment.media_url}" style="max-width: 300px; border-radius: 8px; cursor: pointer;"></a></div>` : ''}
+                            ${mediaHtml}
                         </div>
                         <div class="fb-comment-actions">
                             <a href="#" class="like-btn">👍 მომწონს</a>

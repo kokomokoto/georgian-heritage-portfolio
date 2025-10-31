@@ -53,7 +53,7 @@ class Comment(db.Model):
     project_id = db.Column(db.String(50), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Required for registered users only
     parent_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=True)
-    media_url = db.Column(db.String(500), nullable=True)  # Cloudinary URL
+    media_urls = db.Column(db.Text, nullable=True)  # JSON array of Cloudinary URLs
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Replies relationship
@@ -67,6 +67,28 @@ class Comment(db.Model):
     
     def is_liked_by_user(self, user_id):
         return any(like.user_id == user_id for like in self.likes)
+    
+    def get_media_urls(self):
+        """Get media URLs as a list"""
+        if self.media_urls:
+            import json
+            try:
+                return json.loads(self.media_urls)
+            except json.JSONDecodeError:
+                return []
+        return []
+    
+    def set_media_urls(self, urls_list):
+        """Set media URLs from a list"""
+        if urls_list:
+            import json
+            self.media_urls = json.dumps(urls_list)
+        else:
+            self.media_urls = None
+    
+    def has_media(self):
+        """Check if comment has any media files"""
+        return bool(self.get_media_urls())
     
     def __repr__(self):
         return f'<Comment {self.id}>'

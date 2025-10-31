@@ -601,66 +601,70 @@ def add_comment(project_id):
     
     comment_text = request.form.get('comment', '').strip()
     parent_id = request.form.get('parent_id', '').strip()
-    media_file = request.files.get('media')
+    media_files = request.files.getlist('media')  # Get multiple files
     
-    print(f"Parsed - comment_text: '{comment_text}', parent_id: '{parent_id}', media_file: {media_file}")
-    print(f"Media file details: filename={media_file.filename if media_file else None}, content_type={media_file.content_type if media_file else None}")
+    print(f"Parsed - comment_text: '{comment_text}', parent_id: '{parent_id}', media_files count: {len(media_files)}")
+    for i, media_file in enumerate(media_files):
+        print(f"Media file {i}: filename={media_file.filename if media_file else None}, content_type={media_file.content_type if media_file else None}")
     
-    if comment_text or media_file:
+    if comment_text or (media_files and any(f.filename for f in media_files)):
         print("Processing comment or media...")
-        # Handle media file upload to Cloudinary
-        media_url = None
-        if media_file and media_file.filename and allowed_file(media_file.filename):
-            print(f"Uploading file to Cloudinary: {media_file.filename}")
-            
-            # Determine file type
-            file_extension = media_file.filename.rsplit('.', 1)[1].lower()
-            is_video = file_extension in {'mp4', 'webm', 'ogg', 'mov', 'avi'}
-            
-            try:
-                upload_params = {
-                    "folder": "comments",
-                    "public_id": f"comment_{int(time.time())}_{secure_filename(media_file.filename)}"
-                }
-                
-                # Add resource_type for videos
-                if is_video:
-                    upload_params["resource_type"] = "video"
-                
-                upload_result = cloudinary.uploader.upload(media_file, **upload_params)
-                media_url = upload_result['secure_url']
-                print(f"Cloudinary upload successful: {media_url}")
-                print(f"File type: {'Video' if is_video else 'Image'}")
-                
-            except Exception as e:
-                print(f"Failed to upload to Cloudinary: {e}")
-                print(f"Error details: {type(e).__name__}")
-                print(f"CRITICAL: Using local fallback - files will be deleted on Render restart!")
-                
-                # On production (Render), this is a MAJOR PROBLEM
-                if os.environ.get('DATABASE_URL'):  # Production check
-                    print("ERROR: Local storage on Render.com will lose files!")
-                    print("Environment check - Cloudinary credentials:")
-                    print(f"  CLOUD_NAME: {'SET' if os.environ.get('CLOUDINARY_CLOUD_NAME') else 'MISSING'}")
-                    print(f"  API_KEY: {'SET' if os.environ.get('CLOUDINARY_API_KEY') else 'MISSING'}")
-                    print(f"  API_SECRET: {'SET' if os.environ.get('CLOUDINARY_API_SECRET') else 'MISSING'}")
-                
-                # Fallback to local storage (TEMPORARY for production)
-                project_path = os.path.join(PROJECTS_DIR, project_id, 'comments')
-                os.makedirs(project_path, exist_ok=True)
-                media_filename = secure_filename(media_file.filename)
-                media_file.save(os.path.join(project_path, media_filename))
-                media_url = f"/projects/{project_id}/comments/{media_filename}"
-                print(f"Local storage fallback: {media_url}")
-                print(f"WARNING: This file will be deleted on server restart!")
-        else:
-            if media_file and media_file.filename:
-                print(f"File not allowed: {media_file.filename}")
-                print(f"Allowed extensions: {ALLOWED_EXTENSIONS}")
-            else:
-                print(f"No valid media file to upload. media_file={media_file}, filename={media_file.filename if media_file else None}")
+        # Handle multiple media files upload to Cloudinary
+        media_urls = []
+        if media_files:
+            for i, media_file in enumerate(media_files):
+                if media_file and media_file.filename and allowed_file(media_file.filename):
+                    print(f"Uploading file {i+1}/{len(media_files)} to Cloudinary: {media_file.filename}")
+                    
+                    # Determine file type
+                    file_extension = media_file.filename.rsplit('.', 1)[1].lower()
+                    is_video = file_extension in {'mp4', 'webm', 'ogg', 'mov', 'avi'}
+                    
+                    try:
+                        upload_params = {
+                            "folder": "comments",
+                            "public_id": f"comment_{int(time.time())}_{i}_{secure_filename(media_file.filename)}"
+                        }
+                        
+                        # Add resource_type for videos
+                        if is_video:
+                            upload_params["resource_type"] = "video"
+                        
+                        upload_result = cloudinary.uploader.upload(media_file, **upload_params)
+                        media_urls.append(upload_result['secure_url'])
+                        print(f"Cloudinary upload successful for file {i+1}: {upload_result['secure_url']}")
+                        print(f"File type: {'Video' if is_video else 'Image'}")
+                        
+                    except Exception as e:
+                        print(f"Failed to upload file {i+1} to Cloudinary: {e}")
+                        print(f"Error details: {type(e).__name__}")
+                        print(f"CRITICAL: Using local fallback - files will be deleted on Render restart!")
+                        
+                        # On production (Render), this is a MAJOR PROBLEM
+                        if os.environ.get('DATABASE_URL'):  # Production check
+                            print("ERROR: Local storage on Render.com will lose files!")
+                            print("Environment check - Cloudinary credentials:")
+                            print(f"  CLOUD_NAME: {'SET' if os.environ.get('CLOUDINARY_CLOUD_NAME') else 'MISSING'}")
+                            print(f"  API_KEY: {'SET' if os.environ.get('CLOUDINARY_API_KEY') else 'MISSING'}")
+                            print(f"  API_SECRET: {'SET' if os.environ.get('CLOUDINARY_API_SECRET') else 'MISSING'}")
+                        
+                        # Fallback to local storage (TEMPORARY for production)
+                        project_path = os.path.join(PROJECTS_DIR, project_id, 'comments')
+                        os.makedirs(project_path, exist_ok=True)
+                        media_filename = secure_filename(media_file.filename)
+                        media_file.save(os.path.join(project_path, media_filename))
+                        local_url = f"/projects/{project_id}/comments/{media_filename}"
+                        media_urls.append(local_url)
+                        print(f"Local storage fallback for file {i+1}: {local_url}")
+                        print(f"WARNING: This file will be deleted on server restart!")
+                else:
+                    if media_file and media_file.filename:
+                        print(f"File {i+1} not allowed: {media_file.filename}")
+                        print(f"Allowed extensions: {ALLOWED_EXTENSIONS}")
+                    else:
+                        print(f"No valid media file {i+1} to upload. media_file={media_file}, filename={media_file.filename if media_file else None}")
         
-        print(f"Final media_url: {media_url}")
+        print(f"Final media_urls: {media_urls}")
         
         # Create comment in database
         if parent_id and parent_id.isdigit():
@@ -670,8 +674,7 @@ def add_comment(project_id):
                 content=comment_text,
                 project_id=project_id,
                 user_id=current_user.id,
-                parent_id=int(parent_id),
-                media_url=media_url
+                parent_id=int(parent_id)
             )
         else:
             # New top-level comment
@@ -679,11 +682,13 @@ def add_comment(project_id):
             new_comment = Comment(
                 content=comment_text,
                 project_id=project_id,
-                user_id=current_user.id,
-                media_url=media_url
+                user_id=current_user.id
             )
         
-        print(f"Saving comment to database: content='{new_comment.content}', media_url='{new_comment.media_url}'")
+        # Set multiple media URLs
+        new_comment.set_media_urls(media_urls)
+        
+        print(f"Saving comment to database: content='{new_comment.content}', media_urls='{new_comment.media_urls}'")
         db.session.add(new_comment)
         db.session.commit()
         print(f"Comment saved with ID: {new_comment.id}")
@@ -699,7 +704,7 @@ def add_comment(project_id):
                         'name': new_comment.author.name if new_comment.author else 'Unknown',
                         'id': new_comment.author.id if new_comment.author else 0
                     },
-                    'media_url': new_comment.media_url,
+                    'media_urls': new_comment.get_media_urls(),  # Return array of URLs
                     'parent_id': new_comment.parent_id,
                     'created_at': new_comment.created_at.strftime('%Y-%m-%d %H:%M')
                 }
