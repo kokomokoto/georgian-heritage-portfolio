@@ -579,10 +579,15 @@ def add_comment(project_id):
     parent_id = request.form.get('parent_id', '').strip()
     media_file = request.files.get('media')
     
+    print(f"Parsed - comment_text: '{comment_text}', parent_id: '{parent_id}', media_file: {media_file}")
+    print(f"Media file details: filename={media_file.filename if media_file else None}, content_type={media_file.content_type if media_file else None}")
+    
     if comment_text or media_file:
+        print("Processing comment or media...")
         # Handle media file upload to Cloudinary
         media_url = None
         if media_file and media_file.filename and allowed_file(media_file.filename):
+            print(f"Uploading file to Cloudinary: {media_file.filename}")
             try:
                 upload_result = cloudinary.uploader.upload(
                     media_file,
@@ -590,6 +595,7 @@ def add_comment(project_id):
                     public_id=f"comment_{int(time.time())}_{secure_filename(media_file.filename)}"
                 )
                 media_url = upload_result['secure_url']
+                print(f"Cloudinary upload successful: {media_url}")
             except Exception as e:
                 print(f"Failed to upload to Cloudinary: {e}")
                 # Fallback to local storage
@@ -598,10 +604,16 @@ def add_comment(project_id):
                 media_filename = secure_filename(media_file.filename)
                 media_file.save(os.path.join(project_path, media_filename))
                 media_url = f"/projects/{project_id}/comments/{media_filename}"
+                print(f"Local storage fallback: {media_url}")
+        else:
+            print(f"No valid media file to upload. media_file={media_file}, filename={media_file.filename if media_file else None}")
+        
+        print(f"Final media_url: {media_url}")
         
         # Create comment in database
         if parent_id and parent_id.isdigit():
             # Reply to existing comment
+            print(f"Creating reply comment with parent_id: {parent_id}")
             new_comment = Comment(
                 content=comment_text,
                 project_id=project_id,
@@ -611,6 +623,7 @@ def add_comment(project_id):
             )
         else:
             # New top-level comment
+            print("Creating top-level comment")
             new_comment = Comment(
                 content=comment_text,
                 project_id=project_id,
@@ -618,8 +631,10 @@ def add_comment(project_id):
                 media_url=media_url
             )
         
+        print(f"Saving comment to database: content='{new_comment.content}', media_url='{new_comment.media_url}'")
         db.session.add(new_comment)
         db.session.commit()
+        print(f"Comment saved with ID: {new_comment.id}")
         
         if is_ajax:
             # Return comment data as JSON
@@ -637,9 +652,12 @@ def add_comment(project_id):
                     'created_at': new_comment.created_at.strftime('%Y-%m-%d %H:%M')
                 }
             }
+            print(f"Returning AJAX response: {comment_data}")
             return jsonify(comment_data)
         
         flash('კომენტარი წარმატებით დაემატა!', 'success')
+    else:
+        print("No comment text or media file provided")
     
     return redirect(url_for('project_detail', project_id=project_id))
 
