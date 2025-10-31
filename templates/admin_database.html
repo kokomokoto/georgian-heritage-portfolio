@@ -147,16 +147,20 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if comment.media_url %}
-                                            {% if comment.media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in comment.media_url %}
-                                                <img src="{{ comment.media_url }}" class="media-thumb" alt="Image">
-                                            {% elif comment.media_url.endswith(('.mp4', '.webm', '.ogg')) or 'video' in comment.media_url %}
-                                                <video class="media-thumb" muted>
-                                                    <source src="{{ comment.media_url }}">
-                                                </video>
-                                            {% else %}
-                                                <a href="{{ comment.media_url }}" target="_blank" class="btn btn-sm btn-outline-primary">📎 ფაილი</a>
-                                            {% endif %}
+                                        {% if comment.has_media() %}
+                                            {% for media_url in comment.get_media_urls() %}
+                                                <div style="margin-bottom: 5px;">
+                                                    {% if media_url.endswith(('.jpg', '.jpeg', '.png', '.gif')) or 'image' in media_url %}
+                                                        <img src="{{ media_url }}" class="media-thumb" alt="Image" style="margin-right: 5px;">
+                                                    {% elif media_url.endswith(('.mp4', '.webm', '.ogg')) or 'video' in media_url %}
+                                                        <video class="media-thumb" muted style="margin-right: 5px;">
+                                                            <source src="{{ media_url }}">
+                                                        </video>
+                                                    {% else %}
+                                                        <a href="{{ media_url }}" target="_blank" class="btn btn-sm btn-outline-primary">📎 ფაილი</a>
+                                                    {% endif %}
+                                                </div>
+                                            {% endfor %}
                                         {% else %}
                                             <span class="text-muted">არ არის</span>
                                         {% endif %}

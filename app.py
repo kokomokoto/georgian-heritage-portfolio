@@ -960,17 +960,32 @@ def cloud_admin_logout():
 @admin_required
 def admin_database():
     """Admin page to view all database contents"""
-    from models import User, Comment, Like
-    
-    # Get all data from database
-    users = User.query.order_by(User.created_at.desc()).all()
-    comments = Comment.query.order_by(Comment.created_at.desc()).all()
-    likes = Like.query.order_by(Like.created_at.desc()).all()
-    
-    return render_template('admin_database.html', 
-                         users=users, 
-                         comments=comments, 
-                         likes=likes)
+    try:
+        from models import User, Comment, Like
+        
+        # Get all data from database
+        users = User.query.order_by(User.created_at.desc()).all()
+        comments = Comment.query.order_by(Comment.created_at.desc()).all()
+        likes = Like.query.order_by(Like.created_at.desc()).all()
+        
+        return render_template('admin_database.html', 
+                             users=users, 
+                             comments=comments, 
+                             likes=likes)
+    except Exception as e:
+        # Return detailed error info for debugging
+        import traceback
+        error_details = traceback.format_exc()
+        return f"""
+        <html>
+        <head><title>Admin Database Error</title></head>
+        <body>
+        <h1>Error in Admin Database Route</h1>
+        <p><strong>Error:</strong> {e}</p>
+        <pre>{error_details}</pre>
+        </body>
+        </html>
+        """, 500
 
 @app.route('/admin/upload', methods=['GET', 'POST'])
 @admin_required
