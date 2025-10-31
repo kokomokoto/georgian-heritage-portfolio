@@ -89,7 +89,7 @@ cloudinary.config(
 PROJECTS_DIR = 'projects'
 PROJECTS_JSON = 'projects.json'
 COMMENTS_JSON = 'comments.json'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'html', 'docx', 'txt', 'mp4', 'webm', 'ogg', 'mov', 'avi'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi'}
 ADMIN_USERNAME = 'admin'
 ADMIN_PASSWORD = 'password'  # Change this in production
 
@@ -612,16 +612,30 @@ def add_comment(project_id):
         media_url = None
         if media_file and media_file.filename and allowed_file(media_file.filename):
             print(f"Uploading file to Cloudinary: {media_file.filename}")
+            
+            # Determine file type
+            file_extension = media_file.filename.rsplit('.', 1)[1].lower()
+            is_video = file_extension in {'mp4', 'webm', 'ogg', 'mov', 'avi'}
+            
             try:
-                upload_result = cloudinary.uploader.upload(
-                    media_file,
-                    folder="comments",
-                    public_id=f"comment_{int(time.time())}_{secure_filename(media_file.filename)}"
-                )
+                upload_params = {
+                    "folder": "comments",
+                    "public_id": f"comment_{int(time.time())}_{secure_filename(media_file.filename)}"
+                }
+                
+                # Add resource_type for videos
+                if is_video:
+                    upload_params["resource_type"] = "video"
+                
+                upload_result = cloudinary.uploader.upload(media_file, **upload_params)
                 media_url = upload_result['secure_url']
                 print(f"Cloudinary upload successful: {media_url}")
+                print(f"File type: {'Video' if is_video else 'Image'}")
+                
             except Exception as e:
                 print(f"Failed to upload to Cloudinary: {e}")
+                print(f"Error details: {type(e).__name__}")
+                
                 # Fallback to local storage
                 project_path = os.path.join(PROJECTS_DIR, project_id, 'comments')
                 os.makedirs(project_path, exist_ok=True)
@@ -630,7 +644,11 @@ def add_comment(project_id):
                 media_url = f"/projects/{project_id}/comments/{media_filename}"
                 print(f"Local storage fallback: {media_url}")
         else:
-            print(f"No valid media file to upload. media_file={media_file}, filename={media_file.filename if media_file else None}")
+            if media_file and media_file.filename:
+                print(f"File not allowed: {media_file.filename}")
+                print(f"Allowed extensions: {ALLOWED_EXTENSIONS}")
+            else:
+                print(f"No valid media file to upload. media_file={media_file}, filename={media_file.filename if media_file else None}")
         
         print(f"Final media_url: {media_url}")
         
