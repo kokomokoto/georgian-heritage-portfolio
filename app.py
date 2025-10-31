@@ -635,14 +635,24 @@ def add_comment(project_id):
             except Exception as e:
                 print(f"Failed to upload to Cloudinary: {e}")
                 print(f"Error details: {type(e).__name__}")
+                print(f"CRITICAL: Using local fallback - files will be deleted on Render restart!")
                 
-                # Fallback to local storage
+                # On production (Render), this is a MAJOR PROBLEM
+                if os.environ.get('DATABASE_URL'):  # Production check
+                    print("ERROR: Local storage on Render.com will lose files!")
+                    print("Environment check - Cloudinary credentials:")
+                    print(f"  CLOUD_NAME: {'SET' if os.environ.get('CLOUDINARY_CLOUD_NAME') else 'MISSING'}")
+                    print(f"  API_KEY: {'SET' if os.environ.get('CLOUDINARY_API_KEY') else 'MISSING'}")
+                    print(f"  API_SECRET: {'SET' if os.environ.get('CLOUDINARY_API_SECRET') else 'MISSING'}")
+                
+                # Fallback to local storage (TEMPORARY for production)
                 project_path = os.path.join(PROJECTS_DIR, project_id, 'comments')
                 os.makedirs(project_path, exist_ok=True)
                 media_filename = secure_filename(media_file.filename)
                 media_file.save(os.path.join(project_path, media_filename))
                 media_url = f"/projects/{project_id}/comments/{media_filename}"
                 print(f"Local storage fallback: {media_url}")
+                print(f"WARNING: This file will be deleted on server restart!")
         else:
             if media_file and media_file.filename:
                 print(f"File not allowed: {media_file.filename}")
