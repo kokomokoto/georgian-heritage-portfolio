@@ -10,12 +10,12 @@
     <h1>პროექტის რედაქტირება</h1>
     <form method="post" enctype="multipart/form-data">
         <div class="mb-3">
-            <label class="form-label">სათაური</label>
+            <label class="form-label">სათაური *</label>
             <input type="text" name="title" class="form-control" value="{{ project.title }}" required>
         </div>
         <div class="mb-3">
             <label class="form-label">აღწერა</label>
-            <textarea name="description" class="form-control" rows="30" required>{{ description }}</textarea>
+            <textarea name="description" class="form-control" rows="30">{{ description }}</textarea>
         </div>
         <div class="mb-3">
             <label class="form-label">3D viewer (iframe ან URL)</label>

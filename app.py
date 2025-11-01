@@ -199,117 +199,42 @@ def edit_project(project_id):
     projects = load_projects()
     project = next((p for p in projects if p['id'] == project_id), None)
     if not project:
-        return 'Project not found', 404
+        flash('პროექტი ვერ მოიძებნა.', 'error')
+        return redirect(url_for('admin_panel'))
+    
     project_path = os.path.join(PROJECTS_DIR, project_id)
     description_path = os.path.join(project_path, 'description.txt')
-    if request.method == 'POST':
-        title = request.form['title']
-        description = request.form['description']
-        viewer3d = request.form['viewer3d']
-        loading_video = request.form.get('loading_video', '')
-        loading_audio = request.form.get('loading_audio', '')
-        
-        # Handle all images from the unified system
-        all_images = []
-        main_image_url = None
-        selected_main = request.form.get('main_image_selector', '')
-        
-        # Collect all images (main + others)
-        # Check for main image
-        main_url = request.form.get('all_image_url_main', '').strip()
-        main_caption = request.form.get('all_image_caption_main', '').strip()
-        if main_url:
-            all_images.append({
-                'url': main_url,
-                'caption': main_caption,
-                'index': 'main'
-            })
-            if selected_main == 'main':
-                main_image_url = main_url
-        
-        # Check for other images
-        i = 0
-        while True:
-            image_url = request.form.get(f'all_image_url_{i}', '').strip()
-            image_caption = request.form.get(f'all_image_caption_{i}', '').strip()
-            if image_url:
-                all_images.append({
-                    'url': image_url,
-                    'caption': image_caption,
-                    'index': str(i)
-                })
-                if selected_main == str(i):
-                    main_image_url = image_url
-            elif i == 0:
-                pass  # Check at least the first one
-            else:
-                break
-            i += 1
-        
-        # If no main image selected, use first image
-        if not main_image_url and all_images:
-            main_image_url = all_images[0]['url']
-        
-        # Create other_images array (exclude the main image)
-        other_images = []
-        for img in all_images:
-            if img['url'] != main_image_url:
-                other_images.append({
-                    'url': img['url'],
-                    'caption': img['caption']
-                })
-        
-        # Handle document files (docx, html) if any
-        files = request.files.getlist('files')
-        documents = project.get('documents', [])  # Keep existing documents
-        for file in files:
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                file.save(os.path.join(project_path, filename))
-                if filename not in documents:
-                    documents.append(filename)
-        
-        # Update description
-        with open(description_path, 'w', encoding='utf-8') as f:
-            f.write(description)
-        
-        # Update project object
-        project['title'] = title
-        project['main_image'] = main_image_url
-        project['other_images'] = other_images
-        project['documents'] = documents
-        project['viewer3D'] = viewer3d
-        project['loading_video'] = loading_video
-        project['loading_audio'] = loading_audio
-        project['latitude'] = request.form.get('latitude', '').strip()
-        project['longitude'] = request.form.get('longitude', '').strip()
-        
-        # Dynamic project info
-        project_info = {}
-        i = 0
-        while True:
-            key = request.form.get(f'info_key_{i}', '').strip()
-            value = request.form.get(f'info_value_{i}', '').strip()
-            if key and value:
-                project_info[key] = value
-            elif not key:
-                break
-            i += 1
-        project['project_info'] = project_info
-        
-        # Categories processing
-        type_categories = request.form.getlist('type_categories')
-        period_categories = request.form.getlist('period_categories')
-        project['type_categories'] = type_categories
-        project['period_categories'] = period_categories
-        
-        save_projects(projects)
-        return redirect(url_for('admin_panel'))
+    
     # Read description
     description = ''
     if os.path.exists(description_path):
         with open(description_path, 'r', encoding='utf-8') as f:
             description = clean_description(f.read())
+    
+    if request.method == 'POST':
+        # Get form data - only title is required
+        title = request.form.get('title', '').strip()
+        if not title:
+            flash('სათაური სავალდებულოა.', 'error')
+            return render_template('edit_project.html', project=project, description=description)
+        
+        # Update project data
+        project['title'] = title
+        
+        # Save optional fields only if provided
+        desc = request.form.get('description', '').strip()
+        if desc:
+            with open(description_path, 'w', encoding='utf-8') as f:
+                f.write(desc)
+        
+        viewer3d = request.form.get('viewer3d', '').strip()
+        if viewer3d:
+            project['viewer3D'] = viewer3d
+            
+        save_projects(projects)
+        flash('პროექტი წარმატებით განახლდა!', 'success')
+        return redirect(url_for('admin_panel'))
+    
     return render_template('edit_project.html', project=project, description=description)
 
 @app.route('/')
