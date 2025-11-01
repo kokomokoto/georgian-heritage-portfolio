@@ -69,13 +69,16 @@ class Comment(db.Model):
         return any(like.user_id == user_id for like in self.likes)
     
     def get_media_urls(self):
-        """Get media URLs as a list"""
+        """Get media URLs as a list - with backwards compatibility"""
         if self.media_urls:
             import json
             try:
                 return json.loads(self.media_urls)
             except json.JSONDecodeError:
                 return []
+        # Backwards compatibility: check if old media_url field exists
+        elif hasattr(self, 'media_url') and self.media_url:
+            return [self.media_url]
         return []
     
     def set_media_urls(self, urls_list):
@@ -87,8 +90,14 @@ class Comment(db.Model):
             self.media_urls = None
     
     def has_media(self):
-        """Check if comment has any media files"""
-        return bool(self.get_media_urls())
+        """Check if comment has any media files - with backwards compatibility"""
+        # Check new format first
+        if self.media_urls:
+            return bool(self.get_media_urls())
+        # Check old format
+        elif hasattr(self, 'media_url') and self.media_url:
+            return True
+        return False
     
     def __repr__(self):
         return f'<Comment {self.id}>'

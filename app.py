@@ -69,6 +69,35 @@ db.init_app(app)
 migrate = Migrate(app, db)
 mail = Mail(app)
 
+# Production database migration on startup
+if os.environ.get('DATABASE_URL'):
+    print("🚀 Production detected - checking database schema...")
+    with app.app_context():
+        try:
+            # Test if we can query comments with new schema
+            from models import Comment
+            test_comment = Comment.query.first()
+            if test_comment:
+                # Try to access new media_urls field
+                test_comment.get_media_urls()
+            print("✅ Database schema is compatible")
+        except Exception as e:
+            print(f"⚠️ Database schema issue detected: {e}")
+            print("🔧 Attempting to fix schema...")
+            try:
+                # Run production migration
+                from production_migration import safe_production_migration
+                safe_production_migration()
+            except Exception as migration_error:
+                print(f"❌ Migration failed: {migration_error}")
+                # Fallback: create all tables
+                db.create_all()
+                print("✅ Fallback: Created missing tables")
+else:
+    # Local development
+    with app.app_context():
+        db.create_all()
+
 # Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
