@@ -11,8 +11,11 @@
     "longitude": "",
     "documents": [],
     "loading_video": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/videoebi/videoebi/11.01.2025mowameta.mp4",
-    "loading_audio": "",
-    "project_info": {},
+    "loading_audio": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/videoebi/musics/mowameta%2001020105%20(2).mp3",
+    "project_info": {
+      "არქიტექტორი": "ვახოიე",
+      "ზხცზხც": "ზხცზხცზხ"
+    },
     "type_categories": [],
     "period_categories": []
   },

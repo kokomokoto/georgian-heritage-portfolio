@@ -231,6 +231,44 @@ def edit_project(project_id):
         if viewer3d:
             project['viewer3D'] = viewer3d
             
+        # Save coordinates
+        latitude = request.form.get('latitude', '').strip()
+        longitude = request.form.get('longitude', '').strip()
+        if latitude:
+            project['latitude'] = latitude
+        if longitude:
+            project['longitude'] = longitude
+            
+        # Save loading media
+        loading_video = request.form.get('loading_video', '').strip()
+        loading_audio = request.form.get('loading_audio', '').strip()
+        if loading_video:
+            project['loading_video'] = loading_video
+        if loading_audio:
+            project['loading_audio'] = loading_audio
+            
+        # Save project info
+        project_info = {}
+        i = 0
+        while True:
+            key = request.form.get(f'info_key_{i}', '').strip()
+            value = request.form.get(f'info_value_{i}', '').strip()
+            if key and value:
+                project_info[key] = value
+            elif not key:
+                break
+            i += 1
+        if project_info:
+            project['project_info'] = project_info
+            
+        # Save categories
+        type_categories = request.form.getlist('type_categories')
+        period_categories = request.form.getlist('period_categories')
+        if type_categories:
+            project['type_categories'] = type_categories
+        if period_categories:
+            project['period_categories'] = period_categories
+            
         save_projects(projects)
         flash('პროექტი წარმატებით განახლდა!', 'success')
         return redirect(url_for('admin_panel'))
