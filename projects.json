@@ -2,63 +2,24 @@
   {
     "id": "project_1",
     "title": "გელათი",
-    "main_image": "bagrati.PNG",
-    "other_images": [
-      {
-        "file": "bagrati.PNG",
-        "caption": "გწსერგწ"
-      },
-      {
-        "file": "eye.png",
-        "caption": "წეფწეფრ"
-      },
-      {
-        "file": "mason-symbol-icon-34.jpg",
-        "caption": "წეფწეფ"
-      },
-      {
-        "file": "metexii.PNG",
-        "caption": "წეფწეფ"
-      },
-      {
-        "file": "narikala_1.jpg",
-        "caption": "წერფწეფწ"
-      },
-      {
-        "file": "narikala_2.jpg",
-        "caption": "ეფწეფწე"
-      },
-      {
-        "file": "vajas_dzegli.PNG",
-        "caption": "ფწწწწწწწწწ"
-      },
-      {
-        "file": "vake.PNG",
-        "caption": "ეეეეეეე"
-      },
-      {
-        "file": "ye.PNG",
-        "caption": "ტტტტტტტტტ"
-      },
-      {
-        "file": "zgvis_eklesia.PNG",
-        "caption": "55555555"
-      },
-      {
-        "file": "PNG",
-        "caption": "2222222222"
-      }
-    ],
+    "main_image": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/videoebi/fotoebi/7605340266.jpg",
+    "other_images": [],
     "viewer3D": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/09.03VAKIS%20dzegli/index.html",
     "description_file": "description.txt",
     "folder": "project_1",
     "latitude": "",
-    "longitude": ""
+    "longitude": "",
+    "documents": [],
+    "loading_video": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/videoebi/videoebi/11.01.2025mowameta.mp4",
+    "loading_audio": "",
+    "project_info": {},
+    "type_categories": [],
+    "period_categories": []
   },
   {
     "id": "project_2",
     "title": "ნარიყალა და იგი სიმონ",
-    "main_image": "",
+    "main_image": null,
     "other_images": [],
     "viewer3D": "https://pub-4fc6f0228f1b4339a6b16c315c9125e7.r2.dev/09.03VAKIS%20dzegli/index.html",
     "description_file": "description.txt",
