@@ -184,14 +184,22 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def load_projects():
-    if os.path.exists(PROJECTS_JSON):
-        with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return []
+    try:
+        if os.path.exists(PROJECTS_JSON):
+            with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        print(f"Error loading projects: {e}")
+        return []
 
 def save_projects(projects):
-    with open(PROJECTS_JSON, 'w', encoding='utf-8') as f:
-        json.dump(projects, f, ensure_ascii=False, indent=2)
+    try:
+        with open(PROJECTS_JSON, 'w', encoding='utf-8') as f:
+            json.dump(projects, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error saving projects: {e}")
+        raise
 
 def load_comments():
     if os.path.exists(COMMENTS_JSON):
@@ -216,18 +224,27 @@ def admin_required(f):
 @app.route('/admin/edit/<project_id>', methods=['GET', 'POST'])
 @admin_required
 def edit_project(project_id):
-    projects = load_projects()
-    project = next((p for p in projects if p['id'] == project_id), None)
-    if not project:
-        return 'Project not found', 404
-    project_path = os.path.join(PROJECTS_DIR, project_id)
-    description_path = os.path.join(project_path, 'description.txt')
-    if request.method == 'POST':
-        title = request.form['title']
-        description = request.form['description']
-        viewer3d = request.form['viewer3d']
-        loading_video = request.form.get('loading_video', '')
-        loading_audio = request.form.get('loading_audio', '')
+    try:
+        projects = load_projects()
+        project = next((p for p in projects if p['id'] == project_id), None)
+        if not project:
+            flash('პროექტი ვერ მოიძებნა.', 'error')
+            return redirect(url_for('admin_panel'))
+        
+        project_path = os.path.join(PROJECTS_DIR, project_id)
+        description_path = os.path.join(project_path, 'description.txt')
+        
+        if request.method == 'POST':
+            # მხოლოდ სათაური არის სავალდებულო
+            title = request.form.get('title', '').strip()
+            if not title:
+                flash('სათაური სავალდებულოა.', 'error')
+                return redirect(url_for('edit_project', project_id=project_id))
+            
+            description = request.form.get('description', '').strip()
+            viewer3d = request.form.get('viewer3d', '').strip()
+            loading_video = request.form.get('loading_video', '').strip()
+            loading_audio = request.form.get('loading_audio', '').strip()
         
         # Handle all images from the unified system
         all_images = []
@@ -289,22 +306,38 @@ def edit_project(project_id):
                 if filename not in documents:
                     documents.append(filename)
         
-        # Update description
-        with open(description_path, 'w', encoding='utf-8') as f:
-            f.write(description)
+        # Update description only if provided
+        if description:
+            try:
+                with open(description_path, 'w', encoding='utf-8') as f:
+                    f.write(description)
+            except Exception as e:
+                print(f"Error saving description: {e}")
         
         # Update project object
         project['title'] = title
-        project['main_image'] = main_image_url
-        project['other_images'] = other_images
-        project['documents'] = documents
-        project['viewer3D'] = viewer3d
-        project['loading_video'] = loading_video
-        project['loading_audio'] = loading_audio
-        project['latitude'] = request.form.get('latitude', '').strip()
-        project['longitude'] = request.form.get('longitude', '').strip()
+        if main_image_url:
+            project['main_image'] = main_image_url
+        if other_images:
+            project['other_images'] = other_images
+        if documents:
+            project['documents'] = documents
+        if viewer3d:
+            project['viewer3D'] = viewer3d
+        if loading_video:
+            project['loading_video'] = loading_video
+        if loading_audio:
+            project['loading_audio'] = loading_audio
         
-        # Dynamic project info
+        # Optional coordinates
+        latitude = request.form.get('latitude', '').strip()
+        longitude = request.form.get('longitude', '').strip()
+        if latitude:
+            project['latitude'] = latitude
+        if longitude:
+            project['longitude'] = longitude
+        
+        # Dynamic project info (optional)
         project_info = {}
         i = 0
         while True:
@@ -315,21 +348,40 @@ def edit_project(project_id):
             elif not key:
                 break
             i += 1
-        project['project_info'] = project_info
+        if project_info:
+            project['project_info'] = project_info
         
-        # Categories processing
+        # Categories processing (optional)
         type_categories = request.form.getlist('type_categories')
         period_categories = request.form.getlist('period_categories')
-        project['type_categories'] = type_categories
-        project['period_categories'] = period_categories
+        if type_categories:
+            project['type_categories'] = type_categories
+        if period_categories:
+            project['period_categories'] = period_categories
         
-        save_projects(projects)
+        try:
+            save_projects(projects)
+            flash('პროექტი წარმატებით განახლდა!', 'success')
+            return redirect(url_for('admin_panel'))
+        except Exception as e:
+            print(f"Error saving projects: {e}")
+            flash('პროექტის შენახვისას მოხდა შეცდომა.', 'error')
+            return redirect(url_for('edit_project', project_id=project_id))
+    
+    except Exception as e:
+        print(f"Error in edit_project: {e}")
+        flash('პროექტის რედაქტირებისას მოხდა შეცდომა.', 'error')
         return redirect(url_for('admin_panel'))
+    
     # Read description
     description = ''
     if os.path.exists(description_path):
-        with open(description_path, 'r', encoding='utf-8') as f:
-            description = clean_description(f.read())
+        try:
+            with open(description_path, 'r', encoding='utf-8') as f:
+                description = clean_description(f.read())
+        except Exception as e:
+            print(f"Error reading description: {e}")
+    
     return render_template('edit_project.html', project=project, description=description)
 
 @app.route('/')
@@ -838,8 +890,13 @@ def admin_logout():
 @app.route('/admin/panel')
 @admin_required
 def admin_panel():
-    projects = load_projects()
-    return render_template('admin_panel.html', projects=projects)
+    try:
+        projects = load_projects()
+        return render_template('admin_panel.html', projects=projects)
+    except Exception as e:
+        print(f"Error in admin_panel: {e}")
+        flash('ადმინ პანელის ჩატვირთვისას მოხდა შეცდომა.', 'error')
+        return redirect(url_for('admin_login'))
 
 @app.route('/debug/database')
 def debug_database():
