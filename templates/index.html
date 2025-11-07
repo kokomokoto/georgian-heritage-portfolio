@@ -85,6 +85,13 @@
         <input type="text" id="searchInput" name="q" value="{{ q }}" placeholder="ძებნა სათაურით" class="form-control" autocomplete="off" />
     </form>
     
+    <!-- Projects Map -->
+    <div class="container mb-4">
+        <div id="map" style="height: 350px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
+    </div>
+    
+    <div id="projectsData" style="display:none;">{{ projects|tojson|safe }}</div>
+    
     <div style="overflow-x:auto;">
         <div id="projectsContainer" style="display:flex; flex-wrap:nowrap; gap:24px;">
         {% for project in projects %}
@@ -178,6 +185,91 @@
             
             project.style.display = showProject ? 'block' : 'none';
         });
+    }
+
+    // Initialize map when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeMap();
+    });
+    </script>
+
+    <script>
+    function initializeMap() {
+        try {
+            console.log('Initializing map...');
+            
+            // Check if map div exists
+            var mapDiv = document.getElementById('map');
+            if (!mapDiv) {
+                console.error('Map div not found');
+                return;
+            }
+            
+            // Initialize map centered on Georgia
+            var map = L.map('map').setView([42.0, 43.5], 7);
+            console.log('Map created');
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            console.log('Tiles added');
+
+            // Get projects data from hidden div
+            var projectsData = document.getElementById('projectsData');
+            if (!projectsData) {
+                console.error('projectsData div not found');
+                return;
+            }
+            
+            console.log('Raw projects data:', projectsData.textContent.substring(0, 200) + '...');
+            
+            var projects = JSON.parse(projectsData.textContent);
+            console.log('Projects parsed:', projects.length);
+
+            // Add markers for each project with coordinates
+            var markers = [];
+            projects.forEach(function(project, index) {
+                console.log('Processing project', index, project.title, project.latitude, project.longitude);
+                
+                if (project.latitude && project.longitude) {
+                    var lat = parseFloat(project.latitude);
+                    var lng = parseFloat(project.longitude);
+                    
+                    console.log('Parsed coordinates:', lat, lng);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        var marker = L.marker([lat, lng]).addTo(map);
+                        
+                        // Create popup content
+                        var popupContent = '<div style="max-width: 200px;">' +
+                            '<h6>' + project.title + '</h6>' +
+                            '<a href="/project/' + project.id + '" class="btn btn-sm btn-primary">იხილეთ დეტალები</a>' +
+                            '</div>';
+                        
+                        marker.bindPopup(popupContent);
+                        markers.push([lat, lng]);
+                        console.log('Marker added for', project.title);
+                    } else {
+                        console.warn('Invalid coordinates for', project.title, project.latitude, project.longitude);
+                    }
+                } else {
+                    console.log('No coordinates for', project.title);
+                }
+            });
+
+            console.log('Total markers added:', markers.length);
+            
+            // Fit map to show all markers
+            if (markers.length > 0) {
+                map.fitBounds(markers);
+                console.log('Map fitted to bounds');
+            } else {
+                console.warn('No markers to fit');
+            }
+        } catch (error) {
+            console.error('Map initialization error:', error);
+        }
     }
     </script>
     {% endblock %}

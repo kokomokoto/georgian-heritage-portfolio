@@ -205,13 +205,21 @@ def load_projects():
         projects = Project.query.all()
         result = []
         for project in projects:
+            # Load description from file if not in database
+            description = project.description
+            if not description and project.description_file:
+                desc_path = os.path.join('projects', project.folder, 'description.txt')
+                if os.path.exists(desc_path):
+                    with open(desc_path, 'r', encoding='utf-8') as f:
+                        description = clean_description(f.read())
+            
             result.append({
                 'id': project.id,
                 'title': project.title,
                 'main_image': project.main_image,
                 'other_images': json.loads(project.other_images) if project.other_images else [],
                 'viewer3D': project.viewer3D,
-                'description': project.description,
+                'description': description,
                 'description_file': project.description_file,
                 'folder': project.folder,
                 'latitude': project.latitude,
@@ -613,12 +621,15 @@ def project_detail(project_id):
     # Load comments from database - pass Comment objects directly to template
     comments = Comment.query.filter_by(project_id=project_id, parent_id=None).order_by(Comment.created_at.desc()).all()
     
-    # Read description.txt
-    description = ''
-    desc_path = os.path.join('projects', project['folder'], 'description.txt')
-    if os.path.exists(desc_path):
-        with open(desc_path, 'r', encoding='utf-8') as f:
-            description = clean_description(f.read())
+    # Read description.txt or use from database
+    description = project.get('description', '')
+    if not description:
+        desc_path = os.path.join('projects', project['folder'], 'description.txt')
+        if os.path.exists(desc_path):
+            with open(desc_path, 'r', encoding='utf-8') as f:
+                description = clean_description(f.read())
+    else:
+        description = clean_description(description)
     return render_template('project_detail.html', project=project, comments=comments, description=description)
 
 @app.route('/debug/project/<project_id>')
