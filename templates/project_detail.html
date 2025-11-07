@@ -140,6 +140,53 @@
                 margin-bottom: 20px;
             }
         }
+
+        /* Mobile: Project info above description */
+        @media (max-width: 767px) {
+            #projectContent {
+                display: flex;
+                flex-direction: column;
+            }
+
+            #infoCol {
+                order: -1;
+                margin-bottom: 30px;
+            }
+
+            #descriptionCol {
+                order: 1;
+            }
+
+            .col-md-8, .col-md-4 {
+                width: 100%;
+            }
+
+            .card {
+                margin-bottom: 20px;
+            }
+        }
+
+        /* Styling for project info card */
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+            padding: 1rem;
+        }
+
+        .card-header h5 {
+            margin: 0;
+            color: #333;
+        }
+
+        .card-body p {
+            margin: 0.5rem 0;
+            line-height: 1.6;
+        }
     </style>
 {% endblock %}
 {% block content %}
@@ -188,12 +235,12 @@
     <h4>ადგილმდებარეობა რუკაზე</h4>
     <div id="map" style="height:350px; margin-bottom:20px;"></div>
     {% endif %}
-    <div class="row">
-        <div class="col-md-8">
+    <div class="row" id="projectContent">
+        <div class="col-md-8" id="descriptionCol">
             <h4>აღწერა</h4>
             <div class="project-description">{{ description }}</div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-4" id="infoCol">
             <div class="card">
                 <div class="card-header">
                     <h5>პროექტის ინფორმაცია</h5>
