@@ -189,7 +189,7 @@
                     <div class="col-md-3">
                         <label class="form-label small">აღწერა</label>
                         <input type="text" name="all_image_caption_main" class="form-control" 
-                               value="მთავარი სურათი" placeholder="სურათის აღწერა">
+                               value="{{ project.main_image_caption|default('') }}" placeholder="სურათის აღწერა">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small">მთავარი სურათი</label>
@@ -249,7 +249,7 @@
         
         <script>
         // Image URL fields functionality
-        let imageCount = {{ (project.other_images|length if project.other_images else 0) + 1 }};
+        let imageCount = {{ project.other_images|length if project.other_images else 0 }};
         
         document.getElementById('addImageUrl').addEventListener('click', function() {
             const container = document.getElementById('allImagesContainer');

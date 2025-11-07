@@ -69,6 +69,13 @@ db.init_app(app)
 migrate = Migrate(app, db)
 mail = Mail(app)
 
+PROJECTS_DIR = 'projects'
+PROJECTS_JSON = 'projects.json'
+COMMENTS_JSON = 'comments.json'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi'}
+ADMIN_USERNAME = 'შენი_ადმინი'
+ADMIN_PASSWORD = 'შენი_ძლიერი_პაროლი_2024'  # შეცვალე production-ში
+
 # Initialize database
 with app.app_context():
     try:
@@ -130,13 +137,6 @@ cloudinary.config(
     api_key=os.environ.get('CLOUDINARY_API_KEY'),
     api_secret=os.environ.get('CLOUDINARY_API_SECRET')
 )
-
-PROJECTS_DIR = 'projects'
-PROJECTS_JSON = 'projects.json'
-COMMENTS_JSON = 'comments.json'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi'}
-ADMIN_USERNAME = 'შენი_ადმინი'
-ADMIN_PASSWORD = 'შენი_ძლიერი_პაროლი_2024'  # შეცვალე production-ში
 
 # Helpers
 
@@ -217,6 +217,7 @@ def load_projects():
                 'id': project.id,
                 'title': project.title,
                 'main_image': project.main_image,
+                'main_image_caption': project.main_image_caption,
                 'other_images': json.loads(project.other_images) if project.other_images else [],
                 'viewer3D': project.viewer3D,
                 'description': description,
@@ -252,6 +253,7 @@ def save_projects(projects):
                 id=project_data['id'],
                 title=project_data['title'],
                 main_image=project_data.get('main_image'),
+                main_image_caption=project_data.get('main_image_caption'),
                 other_images=json.dumps(project_data.get('other_images', [])),
                 viewer3D=project_data.get('viewer3D'),
                 description=project_data.get('description'),
@@ -303,56 +305,119 @@ def admin_required(f):
 @app.route('/admin/edit/<project_id>', methods=['GET', 'POST'])
 @admin_required
 def edit_project(project_id):
-    projects = load_projects()
-    project = next((p for p in projects if p['id'] == project_id), None)
-    if not project:
+    # Get project from database
+    project_db = Project.query.get(project_id)
+    if not project_db:
         flash('პროექტი ვერ მოიძებნა.', 'error')
         return redirect(url_for('admin_panel'))
     
-    project_path = os.path.join(PROJECTS_DIR, project_id)
-    description_path = os.path.join(project_path, 'description.txt')
-    
-    # Read description
-    description = ''
-    if os.path.exists(description_path):
-        with open(description_path, 'r', encoding='utf-8') as f:
-            description = clean_description(f.read())
+    # Convert to dict for template compatibility
+    project = {
+        'id': project_db.id,
+        'title': project_db.title,
+        'main_image': project_db.main_image,
+        'main_image_caption': project_db.main_image_caption,
+        'other_images': json.loads(project_db.other_images) if project_db.other_images else [],
+        'viewer3D': project_db.viewer3D,
+        'description': project_db.description,
+        'description_file': project_db.description_file,
+        'folder': project_db.folder,
+        'latitude': project_db.latitude,
+        'longitude': project_db.longitude,
+        'documents': json.loads(project_db.documents) if project_db.documents else [],
+        'loading_video': project_db.loading_video,
+        'loading_audio': project_db.loading_audio,
+        'project_info': json.loads(project_db.project_info) if project_db.project_info else {},
+        'type_categories': json.loads(project_db.type_categories) if project_db.type_categories else [],
+        'period_categories': json.loads(project_db.period_categories) if project_db.period_categories else []
+    }
     
     if request.method == 'POST':
         # Get form data - only title is required
         title = request.form.get('title', '').strip()
         if not title:
             flash('სათაური სავალდებულოა.', 'error')
-            return render_template('edit_project.html', project=project, description=description)
+            return render_template('edit_project.html', project=project, description=project['description'])
         
-        # Update project data
-        project['title'] = title
+        # Handle all images from the unified system
+        all_images = []
+        main_image_url = None
+        selected_main = request.form.get('main_image_selector', 'main')  # Default to main image
+        
+        # Handle main image separately
+        main_image_url_input = request.form.get('all_image_url_main', '').strip()
+        main_image_caption_input = request.form.get('all_image_caption_main', '').strip()
+        if main_image_url_input:
+            all_images.append({
+                'url': main_image_url_input,
+                'caption': main_image_caption_input,
+                'index': 'main'
+            })
+            if selected_main == 'main':
+                main_image_url = main_image_url_input
+        
+        # Collect all other images
+        i = 0
+        empty_count = 0
+        while empty_count < 3:  # Continue until we find 3 consecutive empty image fields
+            image_url = request.form.get(f'all_image_url_{i}', '').strip()
+            image_caption = request.form.get(f'all_image_caption_{i}', '').strip()
+            if image_url:
+                all_images.append({
+                    'url': image_url,
+                    'caption': image_caption,
+                    'index': str(i)
+                })
+                if selected_main == str(i):
+                    main_image_url = image_url
+                empty_count = 0  # Reset empty count when we find a valid image
+            else:
+                empty_count += 1
+            i += 1
+        
+        # If no main image selected, use first image
+        if not main_image_url and all_images:
+            main_image_url = all_images[0]['url']
+        
+        # Create other_images array (exclude the main image)
+        other_images = []
+        for img in all_images:
+            if img['url'] != main_image_url:
+                other_images.append({
+                    'url': img['url'],
+                    'caption': img['caption']
+                })
+        
+        # Update project data in database
+        project_db.title = title
+        project_db.main_image = main_image_url
+        project_db.main_image_caption = main_image_caption_input if main_image_caption_input else None
+        project_db.other_images = json.dumps(other_images) if other_images else None
         
         # Save optional fields only if provided
         desc = request.form.get('description', '').strip()
         if desc:
-            with open(description_path, 'w', encoding='utf-8') as f:
-                f.write(desc)
+            project_db.description = desc
         
         viewer3d = request.form.get('viewer3d', '').strip()
         if viewer3d:
-            project['viewer3D'] = viewer3d
+            project_db.viewer3D = viewer3d
             
         # Save coordinates
         latitude = request.form.get('latitude', '').strip()
         longitude = request.form.get('longitude', '').strip()
         if latitude:
-            project['latitude'] = latitude
+            project_db.latitude = latitude
         if longitude:
-            project['longitude'] = longitude
+            project_db.longitude = longitude
             
         # Save loading media
         loading_video = request.form.get('loading_video', '').strip()
         loading_audio = request.form.get('loading_audio', '').strip()
         if loading_video:
-            project['loading_video'] = loading_video
+            project_db.loading_video = loading_video
         if loading_audio:
-            project['loading_audio'] = loading_audio
+            project_db.loading_audio = loading_audio
             
         # Save project info
         project_info = {}
@@ -366,21 +431,22 @@ def edit_project(project_id):
                 break
             i += 1
         if project_info:
-            project['project_info'] = project_info
+            project_db.project_info = json.dumps(project_info)
             
         # Save categories
         type_categories = request.form.getlist('type_categories')
         period_categories = request.form.getlist('period_categories')
         if type_categories:
-            project['type_categories'] = type_categories
+            project_db.type_categories = json.dumps(type_categories)
         if period_categories:
-            project['period_categories'] = period_categories
+            project_db.period_categories = json.dumps(period_categories)
             
-        save_projects(projects)
+        # Commit changes
+        db.session.commit()
         flash('პროექტი წარმატებით განახლდა!', 'success')
         return redirect(url_for('admin_panel'))
     
-    return render_template('edit_project.html', project=project, description=description)
+    return render_template('edit_project.html', project=project, description=project['description'])
 
 @app.route('/')
 def index():

@@ -259,8 +259,17 @@
             </div>
         </div>
     </div>
-    <h4>სხვა სურათები</h4>
+    {% if project.main_image or project.other_images %}
+    <h4>სურათები</h4>
     <div class="row">
+        {% if project.main_image %}
+        <div class="col-md-3 mb-2">
+            <a href="{{ project.main_image }}" class="glightbox" data-gallery="gallery1" data-title="{{ project.main_image_caption|default(project.title) }}">
+                <img src="{{ project.main_image }}" class="img-thumbnail" alt="{{ project.main_image_caption|default(project.title) }}">
+            </a>
+            <div class="text-center small text-muted mt-1">{{ project.main_image_caption|default('მთავარი სურათი') }}</div>
+        </div>
+        {% endif %}
         {% for img in project.other_images %}
         {% if img.url %}
         <div class="col-md-3 mb-2">
@@ -272,6 +281,7 @@
         {% endif %}
         {% endfor %}
     </div>
+    {% endif %}
     <style>
     .fb-comments { 
         background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 

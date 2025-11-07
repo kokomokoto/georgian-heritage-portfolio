@@ -118,6 +118,7 @@ class Project(db.Model):
     id = db.Column(db.String(50), primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     main_image = db.Column(db.Text, nullable=True)
+    main_image_caption = db.Column(db.String(200), nullable=True)  # Caption for main image
     other_images = db.Column(db.Text, nullable=True)  # JSON array
     viewer3D = db.Column(db.Text, nullable=True)
     description = db.Column(db.Text, nullable=True)
