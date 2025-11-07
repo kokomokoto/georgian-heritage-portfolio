@@ -72,7 +72,22 @@ nav a:hover, nav a.active,
   cursor: pointer; 
 }
 
-/* ===== HERO ===== */
+/* Mobile Menu Button */
+.mobile-menu-btn {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex !important;
+    background: transparent;
+    border: none;
+    color: var(--gold-accent);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+  }
+}
 .hero {
   position: relative;
   height: 80vh;
@@ -206,21 +221,166 @@ footer {
   color: var(--dark-navy);
 }
 
-h6 {
-  color: var(--dark-navy) !important;
-  font-weight: bold;
-  margin-bottom: 10px;
-  border-bottom: 2px solid var(--gold-accent);
-  padding-bottom: 5px;
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  /* Navbar mobile */
+  .navbar .container {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  nav {
+    display: none;
+  }
+
+  nav.mobile-menu-open {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: var(--dark-navy);
+    padding: 1rem 0;
+  }
+
+  nav a {
+    margin: 0.5rem 0;
+    padding: 0.5rem 1rem;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    background: transparent;
+    border: none;
+    color: var(--gold-accent);
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+
+  /* Hero mobile */
+  .hero {
+    height: 50vh;
+    align-items: flex-end;
+    padding-bottom: 2rem;
+  }
+
+  .hero-content {
+    margin-left: 0;
+    max-width: 100%;
+    padding: 0 1rem;
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .hero p {
+    font-size: 1rem;
+  }
+
+  .cta-btn {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.9rem;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  /* Cards mobile */
+  #projectsContainer {
+    flex-wrap: wrap !important;
+    justify-content: center;
+  }
+
+  .project-card, .card {
+    width: 100% !important;
+    max-width: 300px !important;
+    flex: 0 0 auto !important;
+  }
+
+  /* Filters mobile */
+  .offcanvas {
+    width: 100% !important;
+  }
+
+  .form-check-label {
+    font-size: 0.95rem;
+  }
+
+  h6 {
+    font-size: 1rem;
+  }
+
+  /* Buttons mobile */
+  .btn-outline-light {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .explore-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Search input mobile */
+  input.form-control {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
 }
 
-/* Facebook-style Comments CSS */
-.fb-comments {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: 2rem;
+  }
+
+  .hero {
+    height: 40vh;
+  }
+
+  .card, .project-card {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .card img, .card-img-top {
+    height: 150px;
+  }
+
+  nav a {
+    margin: 0;
+    padding: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .btn-outline-light {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  footer {
+    font-size: 0.85rem;
+  }
 }
 
-.fb-comment-hover:hover {
-    background-color: #f7f8fa !important;
+/* ===== TOUCH DEVICE OPTIMIZATIONS ===== */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch devices - remove hover effects that don't work */
+  .card:hover, .project-card:hover {
+    transform: none;
+  }
+
+  /* Make touch targets bigger */
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .explore-btn {
+    padding: 0.8rem 1.2rem;
+    min-height: 44px;
+  }
 }
 
 .fb-like-active {

@@ -17,7 +17,7 @@
             <div class="logo">
                 <a href="/" class="text-white text-decoration-none">✻</a>
             </div>
-            <nav>
+            <nav id="mainNav">
                 <a href="/" class="active">PROJECTS</a>
                 <a href="#about">ABOUT</a>
                 <a href="#contact">CONTACT</a>
@@ -47,6 +47,10 @@
                         <a href="{{ url_for('register') }}" class="btn btn-light">რეგისტრაცია</a>
                     </div>
                 {% endif %}
+                <!-- Mobile menu toggle -->
+                <button class="mobile-menu-btn d-none" id="mobileMenuBtn" style="display:none;">
+                    <i class="bi bi-list"></i>
+                </button>
             </div>
         </div>
     </header>
@@ -98,5 +102,36 @@
     </footer>
     {% block scripts %}{% endblock %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mainNav = document.getElementById('mainNav');
+
+        // Show mobile menu button only on small screens
+        function checkScreenSize() {
+            if (window.innerWidth <= 768) {
+                mobileMenuBtn.style.display = 'flex';
+            } else {
+                mobileMenuBtn.style.display = 'none';
+                mainNav.classList.remove('mobile-menu-open');
+            }
+        }
+
+        // Toggle mobile menu
+        mobileMenuBtn.addEventListener('click', function() {
+            mainNav.classList.toggle('mobile-menu-open');
+        });
+
+        // Close menu when clicking a link
+        document.querySelectorAll('#mainNav a').forEach(link => {
+            link.addEventListener('click', function() {
+                mainNav.classList.remove('mobile-menu-open');
+            });
+        });
+
+        // Check screen size on load and resize
+        checkScreenSize();
+        window.addEventListener('resize', checkScreenSize);
+    </script>
 </body>
 </html>
