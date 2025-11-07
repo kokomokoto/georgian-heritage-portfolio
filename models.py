@@ -113,3 +113,26 @@ class Like(db.Model):
     
     # Ensure one like per user per comment
     __table_args__ = (db.UniqueConstraint('user_id', 'comment_id', name='unique_user_comment_like'),)
+
+class Project(db.Model):
+    id = db.Column(db.String(50), primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    main_image = db.Column(db.Text, nullable=True)
+    other_images = db.Column(db.Text, nullable=True)  # JSON array
+    viewer3D = db.Column(db.Text, nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    description_file = db.Column(db.String(100), nullable=True)
+    folder = db.Column(db.String(100), nullable=True)
+    latitude = db.Column(db.String(50), nullable=True)
+    longitude = db.Column(db.String(50), nullable=True)
+    documents = db.Column(db.Text, nullable=True)  # JSON array
+    loading_video = db.Column(db.Text, nullable=True)
+    loading_audio = db.Column(db.Text, nullable=True)
+    project_info = db.Column(db.Text, nullable=True)  # JSON object
+    type_categories = db.Column(db.Text, nullable=True)  # JSON array
+    period_categories = db.Column(db.Text, nullable=True)  # JSON array
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Project {self.title}>'

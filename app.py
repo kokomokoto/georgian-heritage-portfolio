@@ -61,7 +61,7 @@ app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') or 'your_app_passw
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME') or 'your_email@gmail.com'
 
 # Import models after app creation
-from models import db, User, Comment, Like
+from models import db, User, Comment, Like, Project
 from forms import RegistrationForm, LoginForm, ForgotPasswordForm, ResetPasswordForm
 
 # Initialize extensions
@@ -164,14 +164,77 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def load_projects():
-    if os.path.exists(PROJECTS_JSON):
-        with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return []
+    """Load projects from database"""
+    try:
+        projects = Project.query.all()
+        result = []
+        for project in projects:
+            result.append({
+                'id': project.id,
+                'title': project.title,
+                'main_image': project.main_image,
+                'other_images': json.loads(project.other_images) if project.other_images else [],
+                'viewer3D': project.viewer3D,
+                'description': project.description,
+                'description_file': project.description_file,
+                'folder': project.folder,
+                'latitude': project.latitude,
+                'longitude': project.longitude,
+                'documents': json.loads(project.documents) if project.documents else [],
+                'loading_video': project.loading_video,
+                'loading_audio': project.loading_audio,
+                'project_info': json.loads(project.project_info) if project.project_info else {},
+                'type_categories': json.loads(project.type_categories) if project.type_categories else [],
+                'period_categories': json.loads(project.period_categories) if project.period_categories else []
+            })
+        return result
+    except Exception as e:
+        print(f"Error loading projects from database: {e}")
+        # Fallback to JSON if database fails
+        if os.path.exists(PROJECTS_JSON):
+            with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
 
 def save_projects(projects):
-    with open(PROJECTS_JSON, 'w', encoding='utf-8') as f:
-        json.dump(projects, f, ensure_ascii=False, indent=2)
+    """Save projects to database"""
+    try:
+        # Clear existing projects
+        Project.query.delete()
+
+        # Add new projects
+        for project_data in projects:
+            project = Project(
+                id=project_data['id'],
+                title=project_data['title'],
+                main_image=project_data.get('main_image'),
+                other_images=json.dumps(project_data.get('other_images', [])),
+                viewer3D=project_data.get('viewer3D'),
+                description=project_data.get('description'),
+                description_file=project_data.get('description_file'),
+                folder=project_data.get('folder'),
+                latitude=project_data.get('latitude'),
+                longitude=project_data.get('longitude'),
+                documents=json.dumps(project_data.get('documents', [])),
+                loading_video=project_data.get('loading_video'),
+                loading_audio=project_data.get('loading_audio'),
+                project_info=json.dumps(project_data.get('project_info', {})),
+                type_categories=json.dumps(project_data.get('type_categories', [])),
+                period_categories=json.dumps(project_data.get('period_categories', []))
+            )
+            db.session.add(project)
+
+        db.session.commit()
+        print(f"✅ Saved {len(projects)} projects to database")
+    except Exception as e:
+        print(f"❌ Error saving projects to database: {e}")
+        # Fallback to JSON
+        try:
+            with open(PROJECTS_JSON, 'w', encoding='utf-8') as f:
+                json.dump(projects, f, ensure_ascii=False, indent=2)
+            print("💾 Saved to JSON as fallback")
+        except Exception as json_error:
+            print(f"❌ Failed to save to JSON: {json_error}")
 
 def load_comments():
     if os.path.exists(COMMENTS_JSON):
