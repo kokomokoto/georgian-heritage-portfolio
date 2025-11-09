@@ -42,6 +42,7 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 app.config['SESSION_PERMANENT'] = True
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+app.config['SESSION_COOKIE_DOMAIN'] = None  # Make session cookie domain-agnostic
 
 # Remove SERVER_NAME for now as it can cause session issues
 # Only set SERVER_NAME for local development
