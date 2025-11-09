@@ -40,9 +40,11 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
 # Session configuration for better persistence
 app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_TYPE'] = 'filesystem'
+# app.config['SESSION_TYPE'] = 'filesystem'  # Use client-side sessions for cross-IP access
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
-app.config['SESSION_COOKIE_DOMAIN'] = None  # Make session cookie domain-agnostic
+app.config['SESSION_COOKIE_DOMAIN'] = ''  # Make session cookie domain-agnostic
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Allow same-site requests
+app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP in development
 
 # Remove SERVER_NAME for now as it can cause session issues
 # Only set SERVER_NAME for local development
@@ -296,7 +298,7 @@ def save_comments(comments):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('logged_in'):
+        if not session.get('logged_in') or session.get('admin_ip') != request.remote_addr:
             return redirect(url_for('admin_login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
@@ -950,22 +952,45 @@ def admin_login():
         password = request.form['password']
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['logged_in'] = True
+            session['admin_ip'] = request.remote_addr
             return redirect(url_for('admin_panel'))
         flash('Invalid credentials')
     return render_template('login.html')
 
-@app.route('/admin/logout')
-def admin_logout():
-    session.clear()  # Clear all session data
-    response = redirect(url_for('index'))
-    response.delete_cookie('session')  # Delete session cookie
-    return response
+@app.route('/debug/session')
+def debug_session():
+    """Debug route to check session status"""
+    return f"""
+    <html>
+    <head><title>Session Debug</title></head>
+    <body>
+    <h1>Session Debug Info</h1>
+    <p><strong>Session data:</strong> {dict(session)}</p>
+    <p><strong>logged_in value:</strong> {session.get('logged_in')}</p>
+    <p><strong>Current user:</strong> {current_user.is_authenticated if current_user else 'None'}</p>
+    <p><strong>Request remote addr:</strong> {request.remote_addr}</p>
+    <p><strong>Request host:</strong> {request.host}</p>
+    </body>
+    </html>
+    """
 
 @app.route('/admin/panel')
 @admin_required
 def admin_panel():
     projects = load_projects()
     return render_template('admin_panel.html', projects=projects)
+
+@app.route('/admin/logout')
+def admin_logout():
+    """Logout from admin panel"""
+    print(f"DEBUG: Before logout - session: {dict(session)}")
+    session.clear()
+    # Clear session cookie
+    response = redirect(url_for('admin_login'))
+    response.set_cookie('session', '', expires=0)
+    print(f"DEBUG: After logout - session: {dict(session)}")
+    flash('თქვენ გახვედით ადმინ პანელიდან.', 'info')
+    return response
 
 @app.route('/debug/database')
 def debug_database():
