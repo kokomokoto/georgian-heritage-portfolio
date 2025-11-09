@@ -955,8 +955,10 @@ def admin_login():
 
 @app.route('/admin/logout')
 def admin_logout():
-    session.clear()  # Clear all session data instead of just popping one key
-    return redirect(url_for('index'))
+    session.clear()  # Clear all session data
+    response = redirect(url_for('index'))
+    response.delete_cookie('session')  # Delete session cookie
+    return response
 
 @app.route('/admin/panel')
 @admin_required
