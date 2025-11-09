@@ -911,6 +911,10 @@ def delete_comment(comment_id, project_id):
     if current_user.is_authenticated and comment.user_id == current_user.id:
         can_delete = True
     
+    # For admin users - they can delete any comment
+    if session.get('logged_in'):
+        can_delete = True
+    
     # For email-based deletion - check provided email
     author_email = request.form.get('author_email')
     if author_email and comment.author and comment.author.email == author_email.strip():
