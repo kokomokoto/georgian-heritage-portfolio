@@ -1139,6 +1139,70 @@ def admin_database():
         </html>
         """, 500
 
+@app.route('/admin/comments')
+@admin_required
+def admin_comments():
+    """Admin page to manage all comments"""
+    try:
+        from models import Comment, Project
+        
+        # Get all comments with related project and user info
+        comments = Comment.query.order_by(Comment.created_at.desc()).all()
+        
+        # Group comments by project for better organization
+        comments_by_project = {}
+        for comment in comments:
+            project_id = comment.project_id
+            if project_id not in comments_by_project:
+                comments_by_project[project_id] = {
+                    'project': Project.query.get(project_id),
+                    'comments': []
+                }
+            comments_by_project[project_id]['comments'].append(comment)
+        
+        return render_template('admin_comments.html', 
+                             comments_by_project=comments_by_project,
+                             total_comments=len(comments))
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return f"""
+        <html>
+        <head><title>Admin Comments Error</title></head>
+        <body>
+        <h1>Error in Admin Comments Route</h1>
+        <p><strong>Error:</strong> {e}</p>
+        <pre>{error_details}</pre>
+        </body>
+        </html>
+        """, 500
+
+@app.route('/admin/delete_comment/<int:comment_id>', methods=['POST'])
+@admin_required
+def admin_delete_comment(comment_id):
+    """Admin route to delete any comment"""
+    try:
+        comment = Comment.query.get_or_404(comment_id)
+        project_id = comment.project_id
+        
+        # Delete all nested replies first
+        def delete_replies(comment):
+            for reply in comment.replies:
+                delete_replies(reply)
+                db.session.delete(reply)
+        
+        delete_replies(comment)
+        db.session.delete(comment)
+        db.session.commit()
+        
+        flash(f'კომენტარი წარმატებით წაიშალა!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('კომენტარის წაშლისას დაფიქსირდა შეცდომა.', 'error')
+        print(f"Error deleting comment: {e}")
+    
+    return redirect(url_for('admin_comments'))
+
 @app.route('/admin/upload', methods=['GET', 'POST'])
 @admin_required
 def upload_project():
