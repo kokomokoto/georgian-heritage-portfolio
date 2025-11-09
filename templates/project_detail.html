@@ -442,7 +442,7 @@
                             <span class="text-muted">👍 მომწონს{% if comment.get_like_count() > 0 %} ({{ comment.get_like_count() }}){% endif %}</span>
                         {% endif %}
                         <!-- Show delete option if user owns the comment or is admin -->
-                        {% if (current_user.is_authenticated and comment.author and comment.author.id == current_user.id) or session.logged_in %}
+                        {% if (current_user.is_authenticated and comment.author and comment.author.id == current_user.id) or session.get('logged_in') %}
                             <a href="#" class="delete-btn" onclick="deleteComment({{ comment.id }}, '{{ project.id }}')">🗑️ წაშლა</a>
                         {% endif %}
                         <span style="color: #65676b;">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') if comment.created_at else 'ახლახანს' }}</span>
@@ -526,7 +526,7 @@
                                     <a href="#" class="like-btn">👍 მომწონს</a>
                                     <a href="#" class="reply-btn" data-parent="{{ reply.id if reply.id else loop.index0 }}">💬 პასუხი</a>
                                     <!-- Show delete option if user owns the reply or is admin -->
-                                    {% if (current_user.is_authenticated and reply.author and reply.author.id == current_user.id) or session.logged_in %}
+                                    {% if (current_user.is_authenticated and reply.author and reply.author.id == current_user.id) or session.get('logged_in') %}
                                         <a href="#" class="delete-btn" onclick="deleteComment({{ reply.id }}, '{{ project.id }}')">🗑️ წაშლა</a>
                                     {% endif %}
                                     <span style="color: #65676b;">{{ reply.date if reply.date else 'ახლახანს' }}</span>
