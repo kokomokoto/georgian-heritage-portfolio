@@ -132,6 +132,7 @@ class Project(db.Model):
     project_info = db.Column(db.Text, nullable=True)  # JSON object
     type_categories = db.Column(db.Text, nullable=True)  # JSON array
     period_categories = db.Column(db.Text, nullable=True)  # JSON array
+    sort_order = db.Column(db.Integer, default=0)  # For manual ordering
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

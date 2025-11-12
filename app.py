@@ -114,6 +114,7 @@ with app.app_context():
                         project_info=json.dumps(proj_data.get('project_info', {})),
                         type_categories=json.dumps(proj_data.get('type_categories', [])),
                         period_categories=json.dumps(proj_data.get('period_categories', [])),
+                        sort_order=0  # Default sort order
                     )
                     db.session.add(project)
                 db.session.commit()
@@ -205,7 +206,8 @@ def allowed_file(filename):
 def load_projects():
     """Load projects from database"""
     try:
-        projects = Project.query.all()
+        # Sort by sort_order (ascending - lower numbers first), then by created_at (newest first)
+        projects = Project.query.order_by(Project.sort_order.asc(), Project.created_at.desc()).all()
         result = []
         for project in projects:
             # Load description from file if not in database
@@ -228,6 +230,7 @@ def load_projects():
                 'folder': project.folder,
                 'latitude': project.latitude,
                 'longitude': project.longitude,
+                'sort_order': project.sort_order,
                 'documents': json.loads(project.documents) if project.documents else [],
                 'loading_video': project.loading_video,
                 'loading_audio': project.loading_audio,
@@ -264,6 +267,7 @@ def save_projects(projects):
                 folder=project_data.get('folder'),
                 latitude=project_data.get('latitude'),
                 longitude=project_data.get('longitude'),
+                sort_order=project_data.get('sort_order', 0),
                 documents=json.dumps(project_data.get('documents', [])),
                 loading_video=project_data.get('loading_video'),
                 loading_audio=project_data.get('loading_audio'),
@@ -327,6 +331,7 @@ def edit_project(project_id):
         'folder': project_db.folder,
         'latitude': project_db.latitude,
         'longitude': project_db.longitude,
+        'sort_order': project_db.sort_order,
         'documents': json.loads(project_db.documents) if project_db.documents else [],
         'loading_video': project_db.loading_video,
         'loading_audio': project_db.loading_audio,
@@ -409,10 +414,15 @@ def edit_project(project_id):
         # Save coordinates
         latitude = request.form.get('latitude', '').strip()
         longitude = request.form.get('longitude', '').strip()
+        sort_order = request.form.get('sort_order', '0').strip()
         if latitude:
             project_db.latitude = latitude
         if longitude:
             project_db.longitude = longitude
+        try:
+            project_db.sort_order = int(sort_order) if sort_order else 0
+        except ValueError:
+            project_db.sort_order = 0
             
         # Save loading media
         loading_video = request.form.get('loading_video', '').strip()
@@ -1319,6 +1329,13 @@ def upload_project():
         type_categories = request.form.getlist('type_categories')
         period_categories = request.form.getlist('period_categories')
         
+        # Get sort_order
+        sort_order = request.form.get('sort_order', '0').strip()
+        try:
+            sort_order = int(sort_order) if sort_order else 0
+        except ValueError:
+            sort_order = 0
+        
         project_obj = {
             'id': project_id,
             'title': title,
@@ -1332,6 +1349,7 @@ def upload_project():
             'folder': project_id,
             'latitude': latitude,
             'longitude': longitude,
+            'sort_order': sort_order,
             'project_info': project_info,
             'type_categories': type_categories,
             'period_categories': period_categories

@@ -538,3 +538,18 @@ footer {
 .card .card-body {
     padding: 0.5rem 1rem;  /* Reduced from Bootstrap's default 1rem */
 }
+.project-title {
+  color: var(--dark-navy);  /* მუქი ფერი ღია ფონზე */
+  font-size: 2rem;  /* გამსხვილებული ზომა */
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* Mobile version of project title */
+@media (max-width: 767px) {
+  .project-title {
+    font-size: 2.5rem;  /* მობაილზე უფრო პატარა */
+    margin-bottom: 1.5rem;
+  }
+}

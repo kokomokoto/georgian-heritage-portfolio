@@ -15,7 +15,7 @@
         <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary">გასვლა</a>
     </div>
     <table class="table table-bordered">
-    <thead><tr><th>სათაური</th><th>მთავარი ფოტო</th><th>კატეგორიები</th><th>Latitude</th><th>Longitude</th><th>ქმედება</th></tr></thead>
+    <thead><tr><th>სათაური</th><th>მთავარი ფოტო</th><th>კატეგორიები</th><th>რიგი</th><th>Latitude</th><th>Longitude</th><th>ქმედება</th></tr></thead>
         <tbody>
         {% for project in projects %}
         <tr>
@@ -38,6 +38,7 @@
             </td>
             <td>{{ project.latitude|default('') }}</td>
             <td>{{ project.longitude|default('') }}</td>
+            <td>{{ project.sort_order|default(0) }}</td>
             <td>
                 <form method="post" action="/admin/delete/{{ project.id }}" style="display:inline;">
                     <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('დარწმუნებული ხარ?')">წაშლა</button>
