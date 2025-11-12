@@ -152,58 +152,19 @@
   },
   {
     "id": "project_6",
-    "title": "ნარიყალა",
+    "title": "ასდასდ",
     "main_image": "https://pub-e596682234f34e708445409c12658970.r2.dev/6)%20nariyala/4)%20photos/%E1%83%9C%E1%83%90%E1%83%A0%E1%83%98%E1%83%A7%E1%83%90%E1%83%9A%E1%83%90.jpg",
-    "other_images": [
-      {
-        "url": "https://pub-e596682234f34e708445409c12658970.r2.dev/6)%20nariyala/4)%20photos/Entrance_to_the_Narikala_Fortress.JPG",
-        "caption": "ნარიყალა"
-      },
-      {
-        "url": "https://pub-e596682234f34e708445409c12658970.r2.dev/6)%20nariyala/4)%20photos/Kala%2C_Tbilisi.JPG",
-        "caption": "ნარიყალა"
-      },
-      {
-        "url": "https://pub-e596682234f34e708445409c12658970.r2.dev/6)%20nariyala/4)%20photos/Narika_Tbilisi_2019_5.jpg",
-        "caption": "ნარიყალა"
-      },
-      {
-        "url": "https://pub-e596682234f34e708445409c12658970.r2.dev/6)%20nariyala/4)%20photos/Narikala_Tbilisi_2019_2.jpg",
-        "caption": "ნარიყალა"
-      },
-      {
-        "url": "https://pub-e596682234f34e708445409c12658970.r2.dev/6)%20nariyala/4)%20photos/Narikala_fortress%2C_Tbilisi%2C_Georgia.jpg",
-        "caption": "ნარიყალა"
-      },
-      {
-        "url": "https://pub-e596682234f34e708445409c12658970.r2.dev/6)%20nariyala/4)%20photos/Tbilisi%2C_Georgia_%E2%80%94_Old_Tbilisi_%26_Narikala_Fotress.jpg",
-        "caption": "ნარიყალა"
-      },
-      {
-        "url": "https://pub-e596682234f34e708445409c12658970.r2.dev/6)%20nariyala/4)%20photos/Tbilisi_at_Night.jpg",
-        "caption": "ნარიყალა"
-      }
-    ],
-    "documents": [],
+    "other_images": [],
     "viewer3D": "https://pub-e596682234f34e708445409c12658970.r2.dev/6)%20nariyala/1)%203d/nariyala%20cleand%20%20splat/index.html",
     "loading_video": "",
     "loading_audio": "",
     "description_file": "description.txt",
     "folder": "project_6",
-    "latitude": "41.68796404182556",
-    "longitude": "44.80858363465157",
-    "sort_order": 4,
-    "project_info": {
-      "მდებარეობა": "თბილისი",
-      "სპარს. ნარინყალა": "ციტადელი, შიდაციხე"
-    },
-    "type_categories": [
-      "ეკლესია",
-      "ციხე"
-    ],
-    "period_categories": [
-      "I-X საუკუნე",
-      "XI-XVII საუკუნე"
-    ]
+    "latitude": "",
+    "longitude": "",
+    "sort_order": 0,
+    "project_info": {},
+    "type_categories": [],
+    "period_categories": []
   }
 ]

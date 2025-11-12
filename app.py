@@ -241,6 +241,8 @@ def load_projects():
         return result
     except Exception as e:
         print(f"Error loading projects from database: {e}")
+        import traceback
+        traceback.print_exc()
         # Fallback to JSON if database fails
         if os.path.exists(PROJECTS_JSON):
             with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
@@ -249,33 +251,66 @@ def load_projects():
 
 def save_projects(projects):
     """Save projects to database"""
+    print(f"DEBUG: save_projects called with {len(projects)} projects")
     try:
-        # Clear existing projects
-        Project.query.delete()
+        # Get existing project IDs
+        existing_ids = {p.id for p in Project.query.all()}
 
-        # Add new projects
+        # Track which projects we're updating/adding
+        updated_ids = set()
+
         for project_data in projects:
-            project = Project(
-                id=project_data['id'],
-                title=project_data['title'],
-                main_image=project_data.get('main_image'),
-                main_image_caption=project_data.get('main_image_caption'),
-                other_images=json.dumps(project_data.get('other_images', [])),
-                viewer3D=project_data.get('viewer3D'),
-                description=project_data.get('description'),
-                description_file=project_data.get('description_file'),
-                folder=project_data.get('folder'),
-                latitude=project_data.get('latitude'),
-                longitude=project_data.get('longitude'),
-                sort_order=project_data.get('sort_order', 0),
-                documents=json.dumps(project_data.get('documents', [])),
-                loading_video=project_data.get('loading_video'),
-                loading_audio=project_data.get('loading_audio'),
-                project_info=json.dumps(project_data.get('project_info', {})),
-                type_categories=json.dumps(project_data.get('type_categories', [])),
-                period_categories=json.dumps(project_data.get('period_categories', []))
-            )
-            db.session.add(project)
+            project_id = project_data['id']
+            updated_ids.add(project_id)
+
+            # Check if project exists
+            existing_project = Project.query.get(project_id)
+            if existing_project:
+                # Update existing project
+                existing_project.title = project_data['title']
+                existing_project.main_image = project_data.get('main_image')
+                existing_project.main_image_caption = project_data.get('main_image_caption')
+                existing_project.other_images = json.dumps(project_data.get('other_images', []))
+                existing_project.viewer3D = project_data.get('viewer3D')
+                existing_project.description = project_data.get('description')
+                existing_project.description_file = project_data.get('description_file')
+                existing_project.folder = project_data.get('folder')
+                existing_project.latitude = project_data.get('latitude')
+                existing_project.longitude = project_data.get('longitude')
+                existing_project.sort_order = project_data.get('sort_order', 0)
+                existing_project.documents = json.dumps(project_data.get('documents', []))
+                existing_project.loading_video = project_data.get('loading_video')
+                existing_project.loading_audio = project_data.get('loading_audio')
+                existing_project.project_info = json.dumps(project_data.get('project_info', {}))
+                existing_project.type_categories = json.dumps(project_data.get('type_categories', []))
+                existing_project.period_categories = json.dumps(project_data.get('period_categories', []))
+            else:
+                # Create new project
+                project = Project(
+                    id=project_id,
+                    title=project_data['title'],
+                    main_image=project_data.get('main_image'),
+                    main_image_caption=project_data.get('main_image_caption'),
+                    other_images=json.dumps(project_data.get('other_images', [])),
+                    viewer3D=project_data.get('viewer3D'),
+                    description=project_data.get('description'),
+                    description_file=project_data.get('description_file'),
+                    folder=project_data.get('folder'),
+                    latitude=project_data.get('latitude'),
+                    longitude=project_data.get('longitude'),
+                    sort_order=project_data.get('sort_order', 0),
+                    documents=json.dumps(project_data.get('documents', [])),
+                    loading_video=project_data.get('loading_video'),
+                    loading_audio=project_data.get('loading_audio'),
+                    project_info=json.dumps(project_data.get('project_info', {})),
+                    type_categories=json.dumps(project_data.get('type_categories', [])),
+                    period_categories=json.dumps(project_data.get('period_categories', []))
+                )
+                db.session.add(project)
+
+        # Remove projects that are no longer in the list
+        for old_id in existing_ids - updated_ids:
+            Project.query.filter_by(id=old_id).delete()
 
         db.session.commit()
         print(f"✅ Saved {len(projects)} projects to database")
@@ -284,6 +319,8 @@ def save_projects(projects):
         print(f"DEBUG: Verification - {verify_count} projects in database")
     except Exception as e:
         print(f"❌ Error saving projects to database: {e}")
+        import traceback
+        traceback.print_exc()
         db.session.rollback()
         print("DEBUG: Database transaction rolled back")
         # Fallback to JSON
@@ -1249,17 +1286,42 @@ def admin_delete_comment(comment_id):
 @app.route('/admin/upload', methods=['GET', 'POST'])
 @admin_required
 def upload_project():
-    print("DEBUG: Upload route called")
+    print("DEBUG: Upload route called - Method:", request.method)
+    print("DEBUG: Content-Type:", request.content_type)
+    print("DEBUG: Content-Length:", request.content_length)
+    
+    # Log to file for debugging
+    with open('upload_debug.log', 'a', encoding='utf-8') as f:
+        f.write(f"Upload called - Method: {request.method}, Content-Type: {request.content_type}\n")
+    
     if request.method == 'POST':
         print("DEBUG: POST request received")
+        with open('upload_debug.log', 'a', encoding='utf-8') as f:
+            f.write("POST request received\n")
         try:
             title = request.form['title']
             description = request.form['description']
             viewer3d = request.form['viewer3d']
             print(f"DEBUG: Form data received - title: {title}")
+            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                f.write(f"Form data - title: {title}\n")
+                
+            # Continue with processing
+            print("DEBUG: Starting image processing")
+            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                f.write("Starting image processing\n")
+                
         except KeyError as e:
             print(f"DEBUG: Missing form field: {e}")
+            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                f.write(f"Missing form field: {e}\n")
             flash('ფორმის მონაცემები არასწორია.', 'error')
+            return redirect(url_for('upload_project'))
+        except Exception as e:
+            print(f"DEBUG: Unexpected error in form processing: {e}")
+            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                f.write(f"Unexpected error in form processing: {e}\n")
+            flash('შეცდომა ფორმის დამუშავებისას.', 'error')
             return redirect(url_for('upload_project'))
         loading_video = request.form.get('loading_video', '')
         loading_audio = request.form.get('loading_audio', '')
@@ -1267,8 +1329,13 @@ def upload_project():
         # Handle all images from the unified system
         all_images = []
         main_image_url = None
+        main_image_caption = ""
         selected_main = request.form.get('main_image_selector', '0')  # Default to first image
         
+        print("DEBUG: Processing images")
+        with open('upload_debug.log', 'a', encoding='utf-8') as f:
+            f.write("Processing images\n")
+            
         # Collect all images
         i = 0
         while True:
@@ -1282,15 +1349,21 @@ def upload_project():
                 })
                 if selected_main == str(i):
                     main_image_url = image_url
+                    main_image_caption = image_caption
             elif i == 0:
                 pass  # Check at least the first one
             else:
                 break
             i += 1
         
+        print(f"DEBUG: Found {len(all_images)} images")
+        with open('upload_debug.log', 'a', encoding='utf-8') as f:
+            f.write(f"Found {len(all_images)} images\n")
+        
         # If no main image selected, use first image
         if not main_image_url and all_images:
             main_image_url = all_images[0]['url']
+            main_image_caption = all_images[0]['caption']
         
         # Create other_images array (exclude the main image)
         other_images = []
@@ -1304,39 +1377,20 @@ def upload_project():
         project_id = secure_filename(title.lower().replace(' ', '_'))
         print(f"DEBUG: Generated project_id: '{project_id}' from title: '{title}'")
         if not project_id:
-            project_id = 'project_' + str(len(load_projects()) + 1)
-            print(f"DEBUG: Using fallback project_id: '{project_id}'")
+            # Use timestamp-based ID for non-ASCII titles
+            import time
+            project_id = f"project_{int(time.time())}"
+            print(f"DEBUG: Using timestamp-based project_id: '{project_id}'")
         
         project_path = os.path.join(PROJECTS_DIR, project_id)
         print(f"DEBUG: Project path: {project_path}")
         os.makedirs(project_path, exist_ok=True)
         
-        # Handle document files (docx, html) if any
-        files = request.files.getlist('files')
-        documents = []
-        print(f"DEBUG: Received {len(files)} files from request.files.getlist('files')")
-        print(f"DEBUG: request.files keys: {list(request.files.keys())}")
-        for file in files:
-            print(f"DEBUG: Processing file: {file.filename if file else 'None'}, file object: {type(file)}")
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                file_path = os.path.join(project_path, filename)
-                print(f"DEBUG: Saving file to: {file_path}")
-                try:
-                    file.save(file_path)
-                    documents.append(filename)
-                    print(f"DEBUG: File saved successfully: {filename}")
-                except Exception as e:
-                    print(f"DEBUG: Error saving file {filename}: {e}")
-            else:
-                print(f"DEBUG: File rejected: {file.filename if file else 'None'} - allowed_file result: {allowed_file(file.filename) if file else 'No file'}")
-        
         # Save description
         with open(os.path.join(project_path, 'description.txt'), 'w', encoding='utf-8') as f:
             f.write(description)
         
-        # Update projects.json
-        projects = load_projects()
+        # Save project directly to database
         latitude = request.form.get('latitude', '').strip()
         longitude = request.form.get('longitude', '').strip()
         
@@ -1363,29 +1417,63 @@ def upload_project():
         except ValueError:
             sort_order = 0
         
-        project_obj = {
-            'id': project_id,
-            'title': title,
-            'main_image': main_image_url,  # Now URL instead of filename
-            'other_images': other_images,  # Now contains URLs with captions
-            'documents': documents,  # Separate array for document files
-            'viewer3D': viewer3d,
-            'loading_video': loading_video,
-            'loading_audio': loading_audio,
-            'description_file': 'description.txt',
-            'folder': project_id,
-            'latitude': latitude,
-            'longitude': longitude,
-            'sort_order': sort_order,
-            'project_info': project_info,
-            'type_categories': type_categories,
-            'period_categories': period_categories
-        }
-        print(f"DEBUG: Created project_obj with {len(documents)} documents: {documents}")
-        projects.append(project_obj)
-        print(f"DEBUG: About to save {len(projects)} projects")
-        save_projects(projects)
-        print("DEBUG: Project saved successfully, redirecting to admin panel")
+        # Check if project already exists
+        existing_project = Project.query.get(project_id)
+        if existing_project:
+            # Update existing project
+            existing_project.title = title
+            existing_project.main_image = main_image_url
+            existing_project.main_image_caption = main_image_caption
+            existing_project.other_images = json.dumps(other_images)
+            existing_project.viewer3D = viewer3d
+            existing_project.description = description
+            existing_project.description_file = 'description.txt'
+            existing_project.folder = project_id
+            existing_project.latitude = latitude
+            existing_project.longitude = longitude
+            existing_project.sort_order = sort_order
+            existing_project.documents = json.dumps([])
+            existing_project.loading_video = loading_video
+            existing_project.loading_audio = loading_audio
+            existing_project.project_info = json.dumps(project_info)
+            existing_project.type_categories = json.dumps(type_categories)
+            existing_project.period_categories = json.dumps(period_categories)
+        else:
+            # Create new project
+            new_project = Project(
+                id=project_id,
+                title=title,
+                main_image=main_image_url,
+                main_image_caption=main_image_caption,
+                other_images=json.dumps(other_images),
+                viewer3D=viewer3d,
+                description=description,
+                description_file='description.txt',
+                folder=project_id,
+                latitude=latitude,
+                longitude=longitude,
+                sort_order=sort_order,
+                documents=json.dumps([]),
+                loading_video=loading_video,
+                loading_audio=loading_audio,
+                project_info=json.dumps(project_info),
+                type_categories=json.dumps(type_categories),
+                period_categories=json.dumps(period_categories)
+            )
+            db.session.add(new_project)
+        
+        try:
+            db.session.commit()
+            print("DEBUG: Project saved successfully to database")
+            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                f.write("Project saved successfully to database\n")
+        except Exception as e:
+            print(f"DEBUG: Error saving project to database: {e}")
+            db.session.rollback()
+            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                f.write(f"Error saving project to database: {e}\n")
+            flash('შეცდომა პროექტის შენახვისას.', 'error')
+            return redirect(url_for('upload_project'))
         return redirect(url_for('admin_panel'))
     return render_template('upload.html')
 
@@ -1414,9 +1502,17 @@ def project_file(project_id, filename):
 def comment_media(project_id, filename):
     return send_from_directory(os.path.join(PROJECTS_DIR, project_id, 'comments'), filename)
 
-@app.route('/static/<path:filename>')
-def serve_static(filename):
-    return send_from_directory('static', filename)
+@app.route('/check_admin')
+def check_admin():
+    logged_in = session.get('logged_in', False)
+    admin_ip = session.get('admin_ip')
+    current_ip = request.remote_addr
+    return f"""
+    Logged in: {logged_in}<br>
+    Admin IP: {admin_ip}<br>
+    Current IP: {current_ip}<br>
+    IP Match: {admin_ip == current_ip}
+    """
 
 # --- LIVE SEARCH ROUTE ---
 @app.route('/live_search')
