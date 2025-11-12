@@ -75,7 +75,7 @@ mail = Mail(app)
 PROJECTS_DIR = 'projects'
 PROJECTS_JSON = 'projects.json'
 COMMENTS_JSON = 'comments.json'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi', 'docx', 'html', 'pdf', 'txt', 'doc'}
 ADMIN_USERNAME = 'შენი_ადმინი'
 ADMIN_PASSWORD = 'შენი_ძლიერი_პაროლი_2024'  # შეცვალე production-ში
 
@@ -279,8 +279,13 @@ def save_projects(projects):
 
         db.session.commit()
         print(f"✅ Saved {len(projects)} projects to database")
+        # Verify the save worked
+        verify_count = Project.query.count()
+        print(f"DEBUG: Verification - {verify_count} projects in database")
     except Exception as e:
         print(f"❌ Error saving projects to database: {e}")
+        db.session.rollback()
+        print("DEBUG: Database transaction rolled back")
         # Fallback to JSON
         try:
             with open(PROJECTS_JSON, 'w', encoding='utf-8') as f:
@@ -1244,10 +1249,18 @@ def admin_delete_comment(comment_id):
 @app.route('/admin/upload', methods=['GET', 'POST'])
 @admin_required
 def upload_project():
+    print("DEBUG: Upload route called")
     if request.method == 'POST':
-        title = request.form['title']
-        description = request.form['description']
-        viewer3d = request.form['viewer3d']
+        print("DEBUG: POST request received")
+        try:
+            title = request.form['title']
+            description = request.form['description']
+            viewer3d = request.form['viewer3d']
+            print(f"DEBUG: Form data received - title: {title}")
+        except KeyError as e:
+            print(f"DEBUG: Missing form field: {e}")
+            flash('ფორმის მონაცემები არასწორია.', 'error')
+            return redirect(url_for('upload_project'))
         loading_video = request.form.get('loading_video', '')
         loading_audio = request.form.get('loading_audio', '')
         
@@ -1289,20 +1302,34 @@ def upload_project():
                 })
         
         project_id = secure_filename(title.lower().replace(' ', '_'))
+        print(f"DEBUG: Generated project_id: '{project_id}' from title: '{title}'")
         if not project_id:
             project_id = 'project_' + str(len(load_projects()) + 1)
+            print(f"DEBUG: Using fallback project_id: '{project_id}'")
         
         project_path = os.path.join(PROJECTS_DIR, project_id)
+        print(f"DEBUG: Project path: {project_path}")
         os.makedirs(project_path, exist_ok=True)
         
         # Handle document files (docx, html) if any
         files = request.files.getlist('files')
         documents = []
+        print(f"DEBUG: Received {len(files)} files from request.files.getlist('files')")
+        print(f"DEBUG: request.files keys: {list(request.files.keys())}")
         for file in files:
+            print(f"DEBUG: Processing file: {file.filename if file else 'None'}, file object: {type(file)}")
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
-                file.save(os.path.join(project_path, filename))
-                documents.append(filename)
+                file_path = os.path.join(project_path, filename)
+                print(f"DEBUG: Saving file to: {file_path}")
+                try:
+                    file.save(file_path)
+                    documents.append(filename)
+                    print(f"DEBUG: File saved successfully: {filename}")
+                except Exception as e:
+                    print(f"DEBUG: Error saving file {filename}: {e}")
+            else:
+                print(f"DEBUG: File rejected: {file.filename if file else 'None'} - allowed_file result: {allowed_file(file.filename) if file else 'No file'}")
         
         # Save description
         with open(os.path.join(project_path, 'description.txt'), 'w', encoding='utf-8') as f:
@@ -1354,8 +1381,11 @@ def upload_project():
             'type_categories': type_categories,
             'period_categories': period_categories
         }
+        print(f"DEBUG: Created project_obj with {len(documents)} documents: {documents}")
         projects.append(project_obj)
+        print(f"DEBUG: About to save {len(projects)} projects")
         save_projects(projects)
+        print("DEBUG: Project saved successfully, redirecting to admin panel")
         return redirect(url_for('admin_panel'))
     return render_template('upload.html')
 
