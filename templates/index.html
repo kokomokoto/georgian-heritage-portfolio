@@ -81,10 +81,6 @@
 {% endblock %}
 
 {% block content %}
-    <form method="get" class="mb-3">
-        <input type="text" id="searchInput" name="q" value="{{ q }}" placeholder="ძებნა სათაურით" class="form-control" autocomplete="off" />
-    </form>
-    
     <!-- Projects Map -->
     <div class="container mb-4">
         <div id="map" style="height: 350px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
@@ -98,7 +94,7 @@
         <div class="project-card clickable-card" style="min-width:320px; max-width:340px; flex:0 0 320px; cursor: pointer;" 
              data-type-categories="{{ project.type_categories|join(',') if project.type_categories else '' }}"
              data-period-categories="{{ project.period_categories|join(',') if project.period_categories else '' }}"
-             onclick="window.location.href='/project/{{ project.id }}'">
+             data-href="/project/{{ project.id }}">
             <div class="card h-100">
                 {% if project.main_image %}
                 <img src="{{ project.main_image }}" class="card-img-top" alt="{{ project.title }}">
@@ -115,39 +111,35 @@
 {% endblock %}
     {% block scripts %}
     <script>
+    // Set search input value from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQuery = urlParams.get('q');
+    if (searchQuery) {
+        document.getElementById('searchInput').value = searchQuery;
+    }
+    
     let allProjects = document.querySelectorAll('.project-card');
     
-    // ლაივ ძებნა AJAX-ით
-    document.getElementById('searchInput').addEventListener('input', function() {
-        const q = this.value;
-        fetch(`/live_search?q=${encodeURIComponent(q)}`)
-            .then(r => r.json())
-            .then(data => {
-                const container = document.getElementById('projectsContainer');
-                container.innerHTML = '';
-                if (data.projects.length === 0) {
-                    container.innerHTML = '<div class="text-center">შედეგი ვერ მოიძებნა</div>';
-                    return;
+    // Add click event listeners to project cards for proper middle-click support
+    allProjects.forEach(card => {
+        // Left click - navigate in same tab
+        card.addEventListener('click', function(e) {
+            const href = this.getAttribute('data-href');
+            if (href) {
+                window.location.href = href;
+            }
+        });
+        
+        // Middle click - open in new tab
+        card.addEventListener('auxclick', function(e) {
+            if (e.button === 1) { // Middle click
+                e.preventDefault();
+                const href = this.getAttribute('data-href');
+                if (href) {
+                    window.open(href, '_blank');
                 }
-                data.projects.forEach(project => {
-                    const col = document.createElement('div');
-                    col.className = 'project-card clickable-card';
-                    col.style.cssText = 'min-width:320px; max-width:340px; flex:0 0 320px; cursor: pointer;';
-                    col.setAttribute('data-type-categories', project.type_categories ? project.type_categories.join(',') : '');
-                    col.setAttribute('data-period-categories', project.period_categories ? project.period_categories.join(',') : '');
-                    col.onclick = () => window.location.href = `/project/${project.id}`;
-                    
-                    let imgHtml = project.main_image ? `<img src="${project.main_image}" class="card-img-top" alt="${project.title}">` : '';
-                    
-                    col.innerHTML = `<div class="card h-100">${imgHtml}<div class="card-body"><h5 class="card-title">${project.title}</h5><button class="explore-btn">EXPLORE IN 3D</button></div></div>`;
-                    container.appendChild(col);
-                });
-                
-                // Update allProjects reference
-                allProjects = document.querySelectorAll('.project-card');
-                // Apply current filters
-                applyFilters();
-            });
+            }
+        });
     });
     
     // Category filters

@@ -29,6 +29,11 @@
             <div class="d-flex align-items-center gap-1">
                 {% block filter_button %}{% endblock %}
                 
+                <!-- Search Form -->
+                <form method="get" action="/" class="d-flex me-3">
+                    <input type="text" id="searchInput" name="q" placeholder="ძებნა სათაურით" class="form-control form-control-sm" autocomplete="off" style="width: 200px;" />
+                </form>
+                
                 <!-- User Menu -->
                 {% if current_user.is_authenticated %}
                     <div class="dropdown">
@@ -124,6 +129,69 @@
         // Check screen size on load and resize
         checkScreenSize();
         window.addEventListener('resize', checkScreenSize);
+
+        // Global search functionality (only works on pages with projects container)
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const q = this.value;
+                const projectsContainer = document.getElementById('projectsContainer');
+                
+                // Only perform live search if we're on the index page with projects
+                if (projectsContainer) {
+                    fetch(`/live_search?q=${encodeURIComponent(q)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            const container = document.getElementById('projectsContainer');
+                            container.innerHTML = '';
+                            if (data.projects.length === 0) {
+                                container.innerHTML = '<div class="text-center">შედეგი ვერ მოიძებნა</div>';
+                                return;
+                            }
+                            data.projects.forEach(project => {
+                                const col = document.createElement('div');
+                                col.className = 'project-card clickable-card';
+                                col.style.cssText = 'min-width:320px; max-width:340px; flex:0 0 320px; cursor: pointer;';
+                                col.setAttribute('data-type-categories', project.type_categories ? project.type_categories.join(',') : '');
+                                col.setAttribute('data-period-categories', project.period_categories ? project.period_categories.join(',') : '');
+                                col.setAttribute('data-href', `/project/${project.id}`);
+                                
+                                // Left click - navigate in same tab
+                                col.addEventListener('click', function(e) {
+                                    const href = this.getAttribute('data-href');
+                                    if (href) {
+                                        window.location.href = href;
+                                    }
+                                });
+                                
+                                // Middle click - open in new tab
+                                col.addEventListener('auxclick', function(e) {
+                                    if (e.button === 1) { // Middle click
+                                        e.preventDefault();
+                                        const href = this.getAttribute('data-href');
+                                        if (href) {
+                                            window.open(href, '_blank');
+                                        }
+                                    }
+                                });
+                                
+                                let imgHtml = project.main_image ? `<img src="${project.main_image}" class="card-img-top" alt="${project.title}">` : '';
+                                
+                                col.innerHTML = `<div class="card h-100">${imgHtml}<div class="card-body"><h5 class="card-title">${project.title}</h5></div></div>`;
+                                container.appendChild(col);
+                            });
+                            
+                            // Update allProjects reference and apply filters if they exist
+                            if (typeof allProjects !== 'undefined') {
+                                allProjects = document.querySelectorAll('.project-card');
+                                if (typeof applyFilters === 'function') {
+                                    applyFilters();
+                                }
+                            }
+                        });
+                }
+            });
+        }
     </script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </body>

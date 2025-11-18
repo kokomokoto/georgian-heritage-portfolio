@@ -49,7 +49,7 @@ app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP in development
 # Remove SERVER_NAME for now as it can cause session issues
 # Only set SERVER_NAME for local development
 # if os.environ.get('FLASK_ENV') != 'production':
-#     app.config['SERVER_NAME'] = 'localhost:5001'
+#     app.config['SERVER_NAME'] = 'localhost:5002'
 #     app.config['PREFERRED_URL_SCHEME'] = 'http'
 # else:
 #     # For production (Render), let Flask auto-detect the server name
@@ -1546,6 +1546,6 @@ with app.app_context():
 if __name__ == '__main__':
     os.makedirs(PROJECTS_DIR, exist_ok=True)
     # For production (Render.com), use environment variables
-    port = int(os.environ.get('PORT', 5001))
+    port = int(os.environ.get('PORT', 5002))
     debug = os.environ.get('FLASK_ENV') != 'production'
     app.run(debug=debug, host='0.0.0.0', port=port)
