@@ -14,16 +14,23 @@
   box-sizing: border-box;
 }
 
-body {
-  font-family: 'Inter', 'Segoe UI', sans-serif;
-  background: var(--snow-white);
-  color: var(--dark-navy);
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+/* Mobile container adjustments */
+@media (max-width: 576px) {
+  .container {
+    padding: 0 15px;
+  }
 }
 
 img { 
@@ -53,6 +60,13 @@ img {
   text-decoration: none !important;
 }
 
+/* Mobile logo */
+@media (max-width: 768px) {
+  .logo, a.text-white {
+    font-size: 1.5rem;
+  }
+}
+
 nav a, .navbar a, .bg-primary a {
   color: white; 
   margin: 0 1rem; 
@@ -74,18 +88,19 @@ nav a:hover, nav a.active,
 
 /* Mobile Menu Button */
 .mobile-menu-btn {
-  display: none !important;
+  display: flex;
+  background: transparent;
+  border: none;
+  color: var(--gold-accent);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
 }
 
-@media (max-width: 768px) {
+/* Hide mobile menu button on desktop */
+@media (min-width: 992px) {
   .mobile-menu-btn {
-    display: flex !important;
-    background: transparent;
-    border: none;
-    color: var(--gold-accent);
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 0.5rem;
+    display: none !important;
   }
 }
 
@@ -94,6 +109,23 @@ nav a:hover, nav a.active,
 #map {
   border-radius: 15px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Mobile map adjustments */
+@media (max-width: 768px) {
+  #map {
+    height: 250px !important;
+    margin-top: 20px;
+    margin-bottom: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  #map {
+    height: 200px !important;
+    margin-top: 15px;
+    margin-bottom: 10px;
+  }
 }
 
 .hero p {
@@ -154,6 +186,14 @@ nav a:hover, nav a.active,
   font-size: 1.4rem;
 }
 
+/* Mobile card titles */
+@media (max-width: 576px) {
+  .card h3, .card h5, .card-title {
+    font-size: 1.2rem;
+    padding: 0.4rem 0 0.4rem;
+  }
+}
+
 
 
 
@@ -181,12 +221,57 @@ nav a:hover, nav a.active,
   border-color: white;
 }
 
-/* ===== FOOTER ===== */
-footer {
-  background: var(--deep-forest-green) !important;
+/* ===== FLASH MESSAGES ===== */
+.alert {
+  margin-bottom: 1rem;
+}
+
+/* Mobile flash messages */
+@media (max-width: 576px) {
+  .alert {
+    margin-bottom: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* ===== MAIN CONTENT ===== */
+main.container {
+  margin-bottom: 2rem;
+}
+
+/* Mobile main content */
+@media (max-width: 576px) {
+  main.container {
+    margin-bottom: 1rem;
+  }
+}
+
+/* ===== USER MENU ===== */
+.dropdown-menu {
+  background: var(--dark-navy);
+  border: 1px solid var(--gold-accent);
+}
+
+.dropdown-item {
   color: white;
-  padding: 2rem 0;
-  margin-top: auto;
+}
+
+.dropdown-item:hover {
+  background: var(--gold-accent);
+  color: var(--dark-navy);
+}
+
+/* Mobile user menu */
+@media (max-width: 768px) {
+  .dropdown-toggle {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .dropdown-menu {
+    min-width: 200px;
+  }
 }
 
 /* ===== FILTERS ===== */
@@ -195,11 +280,21 @@ footer {
 }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
+@media (max-width: 991px) {
   /* Navbar mobile */
   .navbar .container {
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.5rem;
+    padding: 1rem 0;
+    width: 100vw;
+  }
+
+  /* Mobile header top row */
+  .mobile-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
   }
 
   nav {
@@ -219,13 +314,8 @@ footer {
     padding: 0.5rem 1rem;
   }
 
-  .mobile-menu-btn {
-    display: flex;
-    background: transparent;
-    border: none;
-    color: var(--gold-accent);
-    font-size: 1.5rem;
-    cursor: pointer;
+  nav.mobile-menu-open .mobile-menu-btn {
+    display: none;
   }
 
   /* Hero mobile */
@@ -233,6 +323,7 @@ footer {
     height: 50vh;
     align-items: flex-end;
     padding-bottom: 2rem;
+    text-align: center;
   }
 
  
@@ -248,6 +339,7 @@ footer {
   #projectsContainer {
     flex-wrap: wrap !important;
     justify-content: center;
+    gap: 16px !important;
   }
 
   .project-card, .card {
@@ -279,6 +371,7 @@ footer {
   /* Search input mobile */
   input.form-control {
     font-size: 16px; /* Prevents zoom on iOS */
+    width: 150px !important;
   }
 }
 
@@ -298,12 +391,17 @@ footer {
 
   .card img, .card-img-top {
     height: 250px;
+    object-fit: cover;
+    border-radius: 16px 16px 0 0;
   }
 
   nav a {
     margin: 0;
-    padding: 0.5rem;
-    font-size: 0.95rem;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    display: block;
+    text-align: center;
+    border-radius: 4px;
   }
 
   .btn-outline-light {
@@ -313,6 +411,7 @@ footer {
 
   footer {
     font-size: 0.85rem;
+    padding: 1.5rem 0;
   }
 }
 
@@ -324,7 +423,7 @@ footer {
   }
 
   /* Make touch targets bigger */
-  button, a {
+  button, a, .clickable-card {
     min-height: 44px;
     min-width: 44px;
     display: inline-flex;
@@ -332,7 +431,25 @@ footer {
     justify-content: center;
   }
 
-  
+  /* Larger touch targets for form elements */
+  input, select, textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  /* Filter checkboxes need larger touch targets */
+  .form-check-input {
+    width: 20px;
+    height: 20px;
+    margin-top: 0.1rem;
+  }
+
+  .form-check-label {
+    padding-left: 0.5rem;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+  }
 }
 
 .fb-like-active {
@@ -483,6 +600,12 @@ footer {
     .form-check-input {
         margin-top: 0.25rem;
     }
+
+    /* Make filter button smaller on very small screens */
+    .btn-outline-light {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
 }
 
 /* Project Description Styling */
@@ -549,7 +672,7 @@ footer {
 /* Mobile version of project title */
 @media (max-width: 767px) {
   .project-title {
-    font-size: 2.5rem;  /* მობაილზე უფრო პატარა */
+    font-size: 1.8rem;  /* Smaller on mobile */
     margin-bottom: 1.5rem;
   }
 }

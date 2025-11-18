@@ -15,8 +15,14 @@
     <!-- Header / Navbar -->
     <header class="navbar">
         <div class="container">
-            <div class="logo">
-                <a href="/" class="text-white text-decoration-none">✻</a>
+            <div class="mobile-header-top">
+                <div class="logo">
+                    <a href="/" class="text-white text-decoration-none">✻</a>
+                </div>
+                <!-- Mobile menu toggle -->
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
+                    <i class="bi bi-list"></i>
+                </button>
             </div>
             <nav id="mainNav">
                 <a href="/" class="active">PROJECTS</a>
@@ -53,10 +59,6 @@
                         <a href="{{ url_for('register') }}" class="btn btn-light">რეგისტრაცია</a>
                     </div>
                 {% endif %}
-                <!-- Mobile menu toggle -->
-                <button class="mobile-menu-btn d-none" id="mobileMenuBtn" style="display:none;">
-                    <i class="bi bi-list"></i>
-                </button>
             </div>
         </div>
     </header>
@@ -106,10 +108,8 @@
 
         // Show mobile menu button only on small screens
         function checkScreenSize() {
-            if (window.innerWidth <= 768) {
-                mobileMenuBtn.style.display = 'flex';
-            } else {
-                mobileMenuBtn.style.display = 'none';
+            // CSS handles the display, no need for JavaScript override
+            if (window.innerWidth > 991) {
                 mainNav.classList.remove('mobile-menu-open');
             }
         }
