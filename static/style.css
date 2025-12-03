@@ -102,6 +102,10 @@ nav a:hover, nav a.active,
   .mobile-menu-btn {
     display: none !important;
   }
+  
+  nav {
+    display: flex !important;
+  }
 }
 
 

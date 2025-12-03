@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% block title %}Contact - Georgian Heritage Portfolio{% endblock %}
+
+{% block content %}
+<style>
+.cv-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.cv-header {
+    background: linear-gradient(135deg, var(--deep-forest-green) 0%, var(--dark-navy) 100%);
+    color: white;
+    padding: 3rem 2rem;
+    text-align: center;
+    position: relative;
+}
+
+.cv-photo {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 5px solid var(--gold-accent);
+    object-fit: cover;
+    margin: 0 auto 1.5rem;
+    display: block;
+}
+
+.cv-name {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--gold-accent);
+}
+
+.cv-title {
+    font-size: 1.3rem;
+    opacity: 0.9;
+    margin-bottom: 1rem;
+}
+
+.cv-contact-info {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.cv-contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0.9;
+}
+
+.cv-contact-item i {
+    color: var(--gold-accent);
+}
+
+.cv-main {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 0;
+}
+
+@media (max-width: 768px) {
+    .cv-main {
+        grid-template-columns: 1fr;
+    }
+}
+
+.cv-sidebar {
+    background: var(--frost-blue);
+    padding: 2rem;
+}
+
+.cv-content {
+    padding: 2rem;
+}
+
+.cv-section {
+    margin-bottom: 2rem;
+}
+
+.cv-section h3 {
+    color: var(--dark-navy);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--gold-accent);
+    padding-bottom: 0.5rem;
+}
+
+.cv-section h4 {
+    color: var(--deep-forest-green);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.cv-section p {
+    color: var(--dark-navy);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.skill-item {
+    margin-bottom: 0.5rem;
+}
+
+.skill-bar {
+    background: #e0e0e0;
+    border-radius: 10px;
+    height: 8px;
+    overflow: hidden;
+    margin-top: 0.3rem;
+}
+
+.skill-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--deep-forest-green), var(--gold-accent));
+    border-radius: 10px;
+}
+
+.experience-item, .education-item {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.experience-item:last-child, .education-item:last-child {
+    border-bottom: none;
+}
+
+.date {
+    color: var(--gold-accent);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.company, .school {
+    color: var(--deep-forest-green);
+    font-weight: 600;
+}
+
+.position, .degree {
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+}
+
+.cv-footer {
+    background: var(--dark-navy);
+    color: white;
+    text-align: center;
+    padding: 2rem;
+}
+
+.cv-footer h3 {
+    color: var(--gold-accent);
+    margin-bottom: 1rem;
+}
+
+.social-links {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.social-links a {
+    color: white;
+    font-size: 1.5rem;
+    transition: color 0.3s ease;
+}
+
+.social-links a:hover {
+    color: var(--gold-accent);
+}
+</style>
+
+<div class="cv-container">
+    <!-- CV Header -->
+    <header class="cv-header">
+        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face" alt="Profile Photo" class="cv-photo">
+        <h1 class="cv-name">გიორგი მამულაშვილი</h1>
+        <p class="cv-title">კულტურული მემკვიდრეობის სპეციალისტი | არქიტექტორი</p>
+
+        <div class="cv-contact-info">
+            <div class="cv-contact-item">
+                <i class="bi bi-envelope"></i>
+                <span>giorgi.mamulashvili@heritage.ge</span>
+            </div>
+            <div class="cv-contact-item">
+                <i class="bi bi-telephone"></i>
+                <span>+995 555 123 456</span>
+            </div>
+            <div class="cv-contact-item">
+                <i class="bi bi-geo-alt"></i>
+                <span>თბილისი, საქართველო</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="cv-main">
+        <!-- Sidebar -->
+        <aside class="cv-sidebar">
+            <!-- About Me -->
+            <section class="cv-section">
+                <h3>შესახებ</h3>
+                <p>
+                    კულტურული მემკვიდრეობის დაცვისა და არქიტექტურის სფეროში 8 წლიანი გამოცდილებით.
+                    სპეციალიზირებული ვარ საქართველოს ისტორიული ძეგლების კვლევასა და რესტავრაციაში.
+                </p>
+            </section>
+
+            <!-- Skills -->
+            <section class="cv-section">
+                <h3>უნარები</h3>
+                <div class="skill-item">
+                    <div>არქიტექტურა & დიზაინი</div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 95%"></div>
+                    </div>
+                </div>
+                <div class="skill-item">
+                    <div>კულტურული მემკვიდრეობა</div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 90%"></div>
+                    </div>
+                </div>
+                <div class="skill-item">
+                    <div>ისტორიული კვლევა</div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 85%"></div>
+                    </div>
+                </div>
+                <div class="skill-item">
+                    <div>რესტავრაცია</div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 88%"></div>
+                    </div>
+                </div>
+                <div class="skill-item">
+                    <div>ფოტოგრაფია</div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 80%"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Languages -->
+            <section class="cv-section">
+                <h3>ენები</h3>
+                <div class="skill-item">
+                    <div>ქართული - მშობლიური</div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="skill-item">
+                    <div>ინგლისური - თავისუფალი</div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 90%"></div>
+                    </div>
+                </div>
+                <div class="skill-item">
+                    <div>რუსული - კარგი</div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 75%"></div>
+                    </div>
+                </div>
+                <div class="skill-item">
+                    <div>გერმანული - საბაზისო</div>
+                    <div class="skill-bar">
+                        <div class="skill-fill" style="width: 40%"></div>
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="cv-content">
+            <!-- Experience -->
+            <section class="cv-section">
+                <h3>გამოცდილება</h3>
+
+                <div class="experience-item">
+                    <div class="date">2020 - დღემდე</div>
+                    <div class="company">საქართველოს კულტურული მემკვიდრეობის სააგენტო</div>
+                    <div class="position">არქიტექტორი - კულტურული მემკვიდრეობის სპეციალისტი</div>
+                    <p>
+                        საქართველოს ისტორიული ძეგლების კვლევა, დოკუმენტაცია და რესტავრაციის პროექტების მართვა.
+                        UNESCO-ს პროექტებში მონაწილეობა.
+                    </p>
+                </div>
+
+                <div class="experience-item">
+                    <div class="date">2017 - 2020</div>
+                    <div class="company">თბილისის სახელმწიფო უნივერსიტეტი</div>
+                    <div class="position">არქიტექტურის დეპარტამენტი - ასისტენტი</div>
+                    <p>
+                        სტუდენტების სწავლება არქიტექტურისა და კულტურული მემკვიდრეობის კურსებში.
+                        კვლევითი პროექტების კოორდინაცია.
+                    </p>
+                </div>
+
+                <div class="experience-item">
+                    <div class="date">2015 - 2017</div>
+                    <div class="company">არქიტექტურული ბიურო "თბილისი"</div>
+                    <div class="position">არქიტექტორი</div>
+                    <p>
+                        ისტორიული შენობების რესტავრაციისა და ადაპტაციის პროექტები.
+                        კლიენტებთან მუშაობა და პროექტების პრეზენტაცია.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Education -->
+            <section class="cv-section">
+                <h3>განათლება</h3>
+
+                <div class="education-item">
+                    <div class="date">2012 - 2015</div>
+                    <div class="school">თბილისის სახელმწიფო უნივერსიტეტი</div>
+                    <div class="degree">არქიტექტურის მაგისტრი</div>
+                    <p>
+                        სპეციალობა: კულტურული მემკვიდრეობის დაცვის არქიტექტურა
+                    </p>
+                </div>
+
+                <div class="education-item">
+                    <div class="date">2008 - 2012</div>
+                    <div class="school">თბილისის სახელმწიფო უნივერსიტეტი</div>
+                    <div class="degree">არქიტექტურის ბაკალავრი</div>
+                    <p>
+                        ძირითადი კურსები: არქიტექტურა, ისტორია, კონსტრუქციები
+                    </p>
+                </div>
+            </section>
+
+            <!-- Projects -->
+            <section class="cv-section">
+                <h3>მნიშვნელოვანი პროექტები</h3>
+
+                <div class="experience-item">
+                    <h4>სვეტიცხოვლის მონასტრის კომპლექსის რესტავრაცია</h4>
+                    <p>
+                        UNESCO-ს მსოფლიო მემკვიდრეობის ძეგლის კომპლექსური რესტავრაციის პროექტი.
+                        ისტორიული კვლევების ჩატარება და რესტავრაციის გეგმის შემუშავება.
+                    </p>
+                </div>
+
+                <div class="experience-item">
+                    <h4>თბილისის ძველი ქალაქის დაცვის გეგმა</h4>
+                    <p>
+                        თბილისის ისტორიული ცენტრის დაცვისა და განვითარების სტრატეგიული გეგმის შემუშავება.
+                        არქიტექტურული რეგულაციების დადგენა და საზოგადოებასთან კონსულტაციები.
+                    </p>
+                </div>
+
+                <div class="experience-item">
+                    <h4>საქართველოს კულტურული მემკვიდრეობის ციფრული არქივი</h4>
+                    <p>
+                        ონლაინ პლატფორმის შექმნა საქართველოს კულტურული ძეგლების დოკუმენტაციისა და პოპულარიზაციისთვის.
+                        ფოტოების, გეგმების და ისტორიული მონაცემების ციფრული არქივი.
+                    </p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="cv-footer">
+        <h3>დამიკავშირდით</h3>
+        <p>მზად ვარ თანამშრომლობისთვის კულტურული მემკვიდრეობის პროექტებში</p>
+
+        <div class="social-links">
+            <a href="#" title="LinkedIn"><i class="bi bi-linkedin"></i></a>
+            <a href="#" title="Facebook"><i class="bi bi-facebook"></i></a>
+            <a href="#" title="Instagram"><i class="bi bi-instagram"></i></a>
+            <a href="#" title="Twitter"><i class="bi bi-twitter"></i></a>
+            <a href="mailto:giorgi.mamulashvili@heritage.ge" title="Email"><i class="bi bi-envelope"></i></a>
+        </div>
+    </footer>
+</div>
+{% endblock %}

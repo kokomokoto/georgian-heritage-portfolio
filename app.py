@@ -779,6 +779,16 @@ def test_comment():
         print(f"User name: {current_user.name}, Email: {current_user.email}")
     return render_template('test_comment.html')
 
+@app.route('/contact')
+def contact():
+    """Contact/CV page"""
+    return render_template('contact.html')
+
+@app.route('/about')
+def about():
+    """About page"""
+    return render_template('about.html')
+
 @app.route('/add_comment/<project_id>', methods=['POST'])
 @login_required
 def add_comment(project_id):

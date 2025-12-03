@@ -1,0 +1,412 @@
+{% extends 'base.html' %}
+{% block title %}About - Georgian Heritage Portfolio{% endblock %}
+
+{% block content %}
+<style>
+.about-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.about-header {
+    background: linear-gradient(135deg, var(--deep-forest-green) 0%, var(--dark-navy) 100%);
+    color: white;
+    padding: 3rem 2rem;
+    text-align: center;
+    position: relative;
+}
+
+.about-logo {
+    width: 120px;
+    height: 120px;
+    background: var(--gold-accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    font-size: 3rem;
+    font-weight: bold;
+    color: var(--dark-navy);
+}
+
+.about-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--gold-accent);
+}
+
+.about-subtitle {
+    font-size: 1.3rem;
+    opacity: 0.9;
+    margin-bottom: 1rem;
+}
+
+.about-intro {
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.about-main {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 0;
+}
+
+@media (max-width: 768px) {
+    .about-main {
+        grid-template-columns: 1fr;
+    }
+}
+
+.about-sidebar {
+    background: var(--frost-blue);
+    padding: 2rem;
+}
+
+.about-content {
+    padding: 2rem;
+}
+
+.about-section {
+    margin-bottom: 2rem;
+}
+
+.about-section h3 {
+    color: var(--dark-navy);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--gold-accent);
+    padding-bottom: 0.5rem;
+}
+
+.about-section h4 {
+    color: var(--deep-forest-green);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.about-section p {
+    color: var(--dark-navy);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.mission-item, .value-item {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 10px;
+    border-left: 4px solid var(--gold-accent);
+}
+
+.mission-item h4, .value-item h4 {
+    margin-bottom: 0.5rem;
+    color: var(--deep-forest-green);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--frost-blue);
+    border-radius: 10px;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--deep-forest-green);
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--dark-navy);
+    margin-top: 0.5rem;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--gold-accent);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 2rem;
+    padding-left: 2rem;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    background: var(--gold-accent);
+    border-radius: 50%;
+}
+
+.timeline-year {
+    font-weight: bold;
+    color: var(--deep-forest-green);
+    margin-bottom: 0.5rem;
+}
+
+.about-footer {
+    background: var(--dark-navy);
+    color: white;
+    text-align: center;
+    padding: 2rem;
+}
+
+.about-footer h3 {
+    color: var(--gold-accent);
+    margin-bottom: 1rem;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.team-member {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.team-member img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 0.5rem;
+    object-fit: cover;
+}
+
+.team-name {
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+
+.team-role {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+</style>
+
+<div class="about-container">
+    <!-- About Header -->
+    <header class="about-header">
+        <div class="about-logo">✻</div>
+        <h1 class="about-title">საქართველოს კულტურული მემკვიდრეობის პორტფოლიო</h1>
+        <p class="about-subtitle">კულტურული ძეგლების ციფრული არქივი და პოპულარიზაცია</p>
+
+        <div class="about-intro">
+            <p>
+                ჩვენი პლატფორმა წარმოადგენს საქართველოს უნიკალურ კულტურული მემკვიდრეობის
+                ციფრულ არქივს, სადაც თავმოყრილია საუკუნეების ისტორია და კულტურა.
+            </p>
+        </div>
+    </header>
+
+    <div class="about-main">
+        <!-- Sidebar -->
+        <aside class="about-sidebar">
+            <!-- Mission -->
+            <section class="about-section">
+                <h3>მისია</h3>
+                <div class="mission-item">
+                    <h4>კულტურული მემკვიდრეობის დაცვა</h4>
+                    <p>
+                        საქართველოს ისტორიული და კულტურული ძეგლების დაცვა და პოპულარიზაცია
+                        თანამედროვე ტექნოლოგიების გამოყენებით.
+                    </p>
+                </div>
+
+                <div class="mission-item">
+                    <h4>განათლება და ცნობიერება</h4>
+                    <p>
+                        საზოგადოების ინფორმირება და განათლება საქართველოს კულტურული
+                        მემკვიდრეობის შესახებ.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Stats -->
+            <section class="about-section">
+                <h3>სტატისტიკა</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number">500+</span>
+                        <div class="stat-label">კულტურული ძეგლი</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">50+</span>
+                        <div class="stat-label">ქალაქი</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">2000+</span>
+                        <div class="stat-label">ფოტო</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">15</span>
+                        <div class="stat-label">რეგიონი</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Values -->
+            <section class="about-section">
+                <h3>ღირებულებები</h3>
+                <div class="value-item">
+                    <h4>მემკვიდრეობა</h4>
+                    <p>ჩვენი წარსული და კულტურის დაცვა</p>
+                </div>
+                <div class="value-item">
+                    <h4>ინოვაცია</h4>
+                    <p>თანამედროვე ტექნოლოგიები კულტურისთვის</p>
+                </div>
+                <div class="value-item">
+                    <h4>ხელმისაწვდომობა</h4>
+                    <p>ყველასთვის ღია და უფასო წვდომა</p>
+                </div>
+            </section>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="about-content">
+            <!-- Story -->
+            <section class="about-section">
+                <h3>ჩვენი ისტორია</h3>
+                <p>
+                    საქართველოს კულტურული მემკვიდრეობის პორტფოლიო დაიწყო როგორც მცირე
+                    პროექტი ისტორიული ძეგლების დოკუმენტაციისთვის. დღეს ეს არის
+                    ყოვლისმომცველი ციფრული პლატფორმა, რომელიც აერთიანებს მრავალსაუკუნოვან
+                    კულტურულ მემკვიდრეობას.
+                </p>
+
+                <p>
+                    ჩვენი მიზანია შევინარჩუნოთ და გავავრცელოთ ცოდნა საქართველოს
+                    უნიკალური კულტურული მემკვიდრეობის შესახებ, რათა მომავალი თაობები
+                    შეძლონ ამ უდიდესი სიმდიდრის შეფასება და დაცვა.
+                </p>
+            </section>
+
+            <!-- Timeline -->
+            <section class="about-section">
+                <h3>განვითარების ტაიმლაინი</h3>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-year">2020</div>
+                        <h4>პროექტის დაწყება</h4>
+                        <p>პირველი ისტორიული ძეგლების ციფრული დოკუმენტაცია</p>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-year">2021</div>
+                        <h4>ვებ-პლატფორმის შექმნა</h4>
+                        <p>ინტერაქტიული რუკის და ფოტო გალერეის დანერგვა</p>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-year">2022</div>
+                        <h4>მონაცემთა ბაზის გაფართოება</h4>
+                        <p>500+ ძეგლის დამატება და კატეგორიზაცია</p>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-year">2023</div>
+                        <h4>მობილური ვერსია</h4>
+                        <p>რესპონსიული დიზაინი და მობილური ოპტიმიზაცია</p>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-year">2024</div>
+                        <h4>სოციალური ფუნქციები</h4>
+                        <p>კომენტარები, რეიტინგები და გაზიარების შესაძლებლობა</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Goals -->
+            <section class="about-section">
+                <h3>მომავალი გეგმები</h3>
+                <p>
+                    ჩვენ განვაგრძობთ მუშაობას კულტურული მემკვიდრეობის ციფრული არქივის
+                    გაფართოებაზე. მომავალში დავამატებთ:
+                </p>
+
+                <ul style="padding-left: 1.5rem;">
+                    <li>3D მოდელები ისტორიული ძეგლებისა</li>
+                    <li>ვირტუალური ტურები</li>
+                    <li>აუდიო გიდები</li>
+                    <li>საგანმანათლებლო კონტენტი</li>
+                    <li>კოლაბორაცია მუზეუმებთან</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="about-footer">
+        <h3>გაწევრიანდით ჩვენს მისიაში</h3>
+        <p>დაგვეხმარეთ საქართველოს კულტურული მემკვიდრეობის დაცვასა და პოპულარიზაციაში</p>
+
+        <div class="team-grid">
+            <div class="team-member">
+                <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face" alt="Team Member">
+                <div class="team-name">გიორგი მამულაშვილი</div>
+                <div class="team-role">პროექტის ლიდერი</div>
+            </div>
+
+            <div class="team-member">
+                <img src="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=200&h=200&fit=crop&crop=face" alt="Team Member">
+                <div class="team-name">მარიამ კობახიძე</div>
+                <div class="team-role">კურატორი</div>
+            </div>
+
+            <div class="team-member">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face" alt="Team Member">
+                <div class="team-name">დავით ჭელიძე</div>
+                <div class="team-role">დეველოპერი</div>
+            </div>
+
+            <div class="team-member">
+                <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face" alt="Team Member">
+                <div class="team-name">ნინო ბერიძე</div>
+                <div class="team-role">დიზაინერი</div>
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock %}
