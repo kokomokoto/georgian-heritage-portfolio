@@ -120,6 +120,7 @@ class Project(db.Model):
     main_image = db.Column(db.Text, nullable=True)
     main_image_caption = db.Column(db.String(200), nullable=True)  # Caption for main image
     other_images = db.Column(db.Text, nullable=True)  # JSON array
+    model_urls = db.Column(db.Text, nullable=True)  # JSON array for 3D model URLs
     viewer3D = db.Column(db.Text, nullable=True)
     description = db.Column(db.Text, nullable=True)
     description_file = db.Column(db.String(100), nullable=True)

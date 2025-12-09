@@ -206,7 +206,7 @@
             
             <!-- 3D Viewer (initially hidden) -->
             <div id="viewer3D" class="hidden">
-                {% if project.viewer3D.startswith('<iframe') %}
+                {% if project.viewer3D.startswith('<') %}
                     {{ project.viewer3D|safe }}
                 {% else %}
                     <iframe src="{{ project.viewer3D }}" class="viewer-iframe" 
@@ -265,6 +265,22 @@
             <div class="text-center small text-muted mt-1">{{ img.caption }}</div>
         </div>
         {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if project.model_urls %}
+    <h4>3D მოდელები</h4>
+    <div class="row">
+        {% for model in project.model_urls %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">{{ model.caption }}</h6>
+                    <a href="{{ model.url }}" target="_blank" class="btn btn-primary btn-sm">გახსენი 3D მოდელი</a>
+                    <small class="text-muted d-block mt-1">{{ model.url.split('/')[-1] }}</small>
+                </div>
+            </div>
+        </div>
         {% endfor %}
     </div>
     {% endif %}

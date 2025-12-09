@@ -6,6 +6,7 @@ Debug script to test Cloudinary upload functionality
 import os
 import cloudinary
 import cloudinary.uploader
+import cloudinary.api
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import time
@@ -34,11 +35,23 @@ def test_cloudinary_upload():
     
     # Test basic connection
     try:
-        import cloudinary.api
         result = cloudinary.api.ping()
         print("Connection test: SUCCESS")
         print(f"Status: {result}")
         print()
+        
+        # Check usage/limits
+        try:
+            usage = cloudinary.api.usage()
+            print("Cloudinary Usage Info:")
+            print(f"Plan: {usage.get('plan', 'Unknown')}")
+            print(f"Monthly Credits: {usage.get('credits', {}).get('usage', 'Unknown')}/{usage.get('credits', {}).get('limit', 'Unknown')}")
+            print(f"Storage: {usage.get('storage', {}).get('usage', 'Unknown')}/{usage.get('storage', {}).get('limit', 'Unknown')}")
+            print()
+        except Exception as e:
+            print(f"Usage check failed: {e}")
+            print()
+            
     except Exception as e:
         print(f"Connection test: FAILED - {e}")
         return
