@@ -1794,6 +1794,7 @@ def upload_project():
             existing_project.project_info = json.dumps(project_info)
             existing_project.type_categories = json.dumps(type_categories)
             existing_project.period_categories = json.dumps(period_categories)
+            existing_project.model_urls = json.dumps([])  # Initialize if not set
         else:
             # Create new project
             new_project = Project(
@@ -1814,45 +1815,192 @@ def upload_project():
                 loading_audio=loading_audio,
                 project_info=json.dumps(project_info),
                 type_categories=json.dumps(type_categories),
-                period_categories=json.dumps(period_categories)
+                period_categories=json.dumps(period_categories),
+                model_urls=json.dumps([])
             )
             db.session.add(new_project)
         
         # Handle ZIP file uploads for 3D models
-        zip_files = request.files.getlist('zip_files')
-        if zip_files:
-            print("DEBUG: Processing ZIP files for 3D models")
-            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                f.write("Processing ZIP files for 3D models\n")
-            
-            for zip_file in zip_files:
-                if zip_file and zip_file.filename:
-                    try:
-                        print(f"DEBUG: Processing ZIP file: {zip_file.filename}")
-                        with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                            f.write(f"Processing ZIP file: {zip_file.filename}\n")
-                        
-                        # Process ZIP file and upload to R2
-                        viewer3d_url = process_zip_for_3d_viewer(zip_file, project_id)
-                        if viewer3d_url:
-                            # Update the project's viewer3D field with the HTML URL
-                            if existing_project:
-                                existing_project.viewer3D = viewer3d_url
-                            else:
-                                new_project.viewer3D = viewer3d_url
-                            print(f"DEBUG: Updated viewer3D URL: {viewer3d_url}")
-                            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                                f.write(f"Updated viewer3D URL: {viewer3d_url}\n")
-                            flash(f'3D მოდელი წარმატებით აიტვირთა: {zip_file.filename}', 'success')
-                        else:
-                            flash(f'3D ZIP ფაილის დამუშავება ვერ მოხერხდა: {zip_file.filename}. შეამოწმეთ რომ ფაილში არის HTML ფაილი.', 'error')
-                    except Exception as e:
-                        print(f"DEBUG: Error processing ZIP file {zip_file.filename}: {e}")
-                        with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                            f.write(f"Error processing ZIP file {zip_file.filename}: {e}\n")
-                        flash(f'ZIP ფაილის დამუშავება ვერ მოხერხდა: {zip_file.filename}', 'error')
-        
         try:
+            zip_files = request.files.getlist('zip_files')
+            if zip_files:
+                print("DEBUG: Processing ZIP files for 3D models")
+                with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                    f.write("Processing ZIP files for 3D models\n")
+                
+                for zip_file in zip_files:
+                    if zip_file and zip_file.filename:
+                        try:
+                            print(f"DEBUG: Processing ZIP file: {zip_file.filename}")
+                            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                                f.write(f"Processing ZIP file: {zip_file.filename}\n")
+                            
+                            # Process ZIP file and upload to R2
+                            viewer3d_url = process_zip_for_3d_viewer(zip_file, project_id)
+                            if viewer3d_url:
+                                # Update the project's viewer3D field with the HTML URL
+                                if existing_project:
+                                    existing_project.viewer3D = viewer3d_url
+                                else:
+                                    new_project.viewer3D = viewer3d_url
+                                print(f"DEBUG: Updated viewer3D URL: {viewer3d_url}")
+                                with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                                    f.write(f"Updated viewer3D URL: {viewer3d_url}\n")
+                                flash(f'3D მოდელი წარმატებით აიტვირთა: {zip_file.filename}', 'success')
+                            else:
+                                flash(f'3D ZIP ფაილის დამუშავება ვერ მოხერხდა: {zip_file.filename}. შეამოწმეთ რომ ფაილში არის HTML ფაილი.', 'error')
+                        except Exception as e:
+                            print(f"DEBUG: Error processing ZIP file {zip_file.filename}: {e}")
+                            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                                f.write(f"Error processing ZIP file {zip_file.filename}: {e}\n")
+                            flash(f'ZIP ფაილის დამუშავება ვერ მოხერხდა: {zip_file.filename}', 'error')
+        except Exception as e:
+            print(f"DEBUG: Error in ZIP processing block: {e}")
+            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                f.write(f"Error in ZIP processing block: {e}\n")
+            flash('შეცდომა ZIP ფაილების დამუშავებისას.', 'error')
+        
+        # Handle file uploads to Cloudinary
+        try:
+            uploaded_urls = []
+            
+            # Upload image files
+            image_files = request.files.getlist('image_files')
+            for file in image_files:
+                if file and file.filename:
+                    try:
+                        # Upload to Cloudinary
+                        upload_result = cloudinary.uploader.upload(file, folder=f"portfolio/projects/{project_id}")
+                        uploaded_urls.append({
+                            'url': upload_result['secure_url'],
+                            'caption': f"ატვირთული სურათი: {file.filename}",
+                            'type': 'image'
+                        })
+                        print(f"Uploaded image {file.filename} to Cloudinary: {upload_result['secure_url']}")
+                        flash(f'სურათი წარმატებით აიტვირთა: {file.filename}', 'success')
+                    except Exception as e:
+                        print(f"Failed to upload image {file.filename}: {e}")
+                        flash(f'სურათის ატვირთვა ვერ მოხერხდა: {file.filename}', 'error')
+            
+            # Upload 3D model files
+            model_files = request.files.getlist('model_files')
+            for file in model_files:
+                if file and file.filename:
+                    filename_lower = file.filename.lower()
+                    try:
+                        if filename_lower.endswith('.zip'):
+                            # For ZIP files, extract HTML content for 3D viewer
+                            extracted_html = extract_text_from_file(file, project_id)
+                            if extracted_html:
+                                # Save HTML content to viewer3D field
+                                if existing_project:
+                                    existing_project.viewer3D = extracted_html
+                                else:
+                                    new_project.viewer3D = extracted_html
+                                print(f"Extracted HTML from 3D ZIP file {file.filename} and saved to viewer3D field")
+                                flash(f'3D ZIP ფაილიდან HTML ექსტრაქცია შესრულებულია: {file.filename}', 'success')
+                            else:
+                                # If no HTML found, upload ZIP to Cloudinary
+                                upload_result = cloudinary.uploader.upload(file, folder=f"portfolio/projects/{project_id}/models", resource_type="raw")
+                                uploaded_urls.append({
+                                    'url': upload_result['secure_url'],
+                                    'caption': f"3D ZIP ფაილი: {file.filename}",
+                                    'type': 'model'
+                                })
+                                print(f"Uploaded 3D ZIP file {file.filename} to Cloudinary: {upload_result['secure_url']}")
+                                flash(f'3D ZIP ფაილი აიტვირთა: {file.filename}', 'success')
+                        else:
+                            # For regular 3D files, upload to Cloudinary
+                            upload_result = cloudinary.uploader.upload(file, folder=f"portfolio/projects/{project_id}/models", resource_type="auto")
+                            uploaded_urls.append({
+                                'url': upload_result['secure_url'],
+                                'caption': f"3D მოდელი: {file.filename}",
+                                'type': 'model'
+                            })
+                            print(f"Uploaded 3D model {file.filename} to Cloudinary: {upload_result['secure_url']}")
+                            flash(f'3D მოდელი აიტვირთა: {file.filename}', 'success')
+                    except Exception as e:
+                        print(f"Failed to upload 3D file {file.filename}: {e}")
+                        flash(f'3D ფაილის ატვირთვა ვერ მოხერხდა: {file.filename}', 'error')
+            
+            # Upload description file
+            description_file = request.files.get('description_file')
+            if description_file and description_file.filename:
+                try:
+                    # Try to extract text from the file
+                    extracted_text = extract_text_from_file(description_file, project_id)
+                    
+                    if extracted_text:
+                        filename_lower = description_file.filename.lower()
+                        if filename_lower.endswith('.zip'):
+                            # For ZIP files (3D viewers), save HTML content to viewer3D field
+                            if existing_project:
+                                existing_project.viewer3D = extracted_text
+                            else:
+                                new_project.viewer3D = extracted_text
+                            if existing_project:
+                                existing_project.description_file = None
+                            else:
+                                new_project.description_file = None
+                            print(f"Extracted HTML from 3D ZIP file {description_file.filename} and saved to viewer3D field")
+                            flash(f'3D ZIP ფაილიდან HTML ექსტრაქცია შესრულებულია: {description_file.filename}', 'success')
+                        else:
+                            # For other text files, save to description field
+                            if existing_project:
+                                existing_project.description = clean_description(extracted_text)
+                                existing_project.description_file = None  # Clear file URL since we have text
+                            else:
+                                new_project.description = clean_description(extracted_text)
+                                new_project.description_file = None  # Clear file URL since we have text
+                            print(f"Extracted text from description file {description_file.filename} and saved to description field")
+                            flash(f'აღწერის ტექსტი ექსტრაქტირებულია: {description_file.filename}', 'success')
+                    else:
+                        # If text extraction failed, upload file to Cloudinary and save URL
+                        upload_result = cloudinary.uploader.upload(description_file, folder=f"portfolio/projects/{project_id}/docs", resource_type="raw")
+                        if existing_project:
+                            existing_project.description_file = upload_result['secure_url']
+                        else:
+                            new_project.description_file = upload_result['secure_url']
+                        print(f"Uploaded description file {description_file.filename} to Cloudinary: {upload_result['secure_url']}")
+                except Exception as e:
+                    print(f"Failed to process description file {description_file.filename}: {e}")
+                    flash(f'აღწერის ფაილის დამუშავება ვერ მოხერხდა: {description_file.filename}', 'error')
+            
+            # Add uploaded URLs to existing images
+            if uploaded_urls:
+                # Get existing other_images
+                existing_other_images = other_images.copy()
+                existing_model_urls = json.loads(existing_project.model_urls) if existing_project and existing_project.model_urls else []
+                if not existing_project:
+                    existing_model_urls = []
+                
+                # Add uploaded files to appropriate arrays
+                for uploaded in uploaded_urls:
+                    if uploaded['type'] == 'image':
+                        existing_other_images.append({
+                            'url': uploaded['url'],
+                            'caption': uploaded['caption']
+                        })
+                    elif uploaded['type'] == 'model':
+                        existing_model_urls.append({
+                            'url': uploaded['url'],
+                            'caption': uploaded['caption']
+                        })
+                
+                # Update database
+                if existing_project:
+                    existing_project.other_images = json.dumps(existing_other_images) if existing_other_images else None
+                    existing_project.model_urls = json.dumps(existing_model_urls) if existing_model_urls else None
+                else:
+                    new_project.other_images = json.dumps(existing_other_images) if existing_other_images else None
+                    new_project.model_urls = json.dumps(existing_model_urls) if existing_model_urls else None
+                
+                flash(f'ატვირთულია {len(uploaded_urls)} ფაილი Cloudinary-ზე!', 'success')
+        except Exception as e:
+            print(f"DEBUG: Error in file upload block: {e}")
+            with open('upload_debug.log', 'a', encoding='utf-8') as f:
+                f.write(f"Error in file upload block: {e}\n")
+            flash('შეცდომა ფაილების ატვირთვისას.', 'error')
             db.session.commit()
             print("DEBUG: Project saved successfully to database")
             with open('upload_debug.log', 'a', encoding='utf-8') as f:

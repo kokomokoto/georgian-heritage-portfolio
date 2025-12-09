@@ -242,6 +242,80 @@
         }
         </script>
         
+        <!-- File Upload Section -->
+        <div class="mb-4">
+            <h5>ფაილების ატვირთვა (კომპიუტერიდან)</h5>
+            <div class="alert alert-info">
+                <strong>ახალი ფუნქციონალი:</strong> ახლა შეგიძლიათ ფოტოები და 3D ფაილები პირდაპირ კომპიუტერიდან აიტვირთოთ. ფაილები ავტომატურად აიტვირთება Cloudinary-ზე.
+            </div>
+
+            <!-- Image Files Upload -->
+            <div class="mb-3">
+                <label class="form-label">ფოტოების ატვირთვა</label>
+                <input type="file" name="image_files" class="form-control" multiple accept="image/*">
+                <small class="form-text text-muted">აირჩიეთ მრავალი ფოტო (JPG, PNG, GIF, WebP)</small>
+            </div>
+
+            <!-- 3D Model Files Upload -->
+            <div class="mb-3">
+                <label class="form-label">3D მოდელების ატვირთვა</label>
+                <input type="file" name="model_files" class="form-control" multiple accept=".obj,.stl,.gltf,.glb,.fbx,.dae,.3ds,.zip">
+                <small class="form-text text-muted">აირჩიეთ 3D ფაილები (OBJ, STL, GLTF, GLB, FBX, DAE, 3DS) ან ZIP ფაილები SuperSplat Editor-დან</small>
+            </div>
+
+            <!-- Description File Upload -->
+            <div class="mb-3">
+                <label class="form-label">აღწერის ფაილის ან 3D ZIP ფაილის ატვირთვა</label>
+                <input type="file" name="description_file" class="form-control" accept=".txt,.md,.html,.doc,.docx,.zip">
+                <small class="form-text text-muted">
+                    აირჩიეთ ტექსტური ფაილი (TXT, MD, HTML, DOC, DOCX) ან 3D ZIP ფაილი (SuperSplat Editor-დან).<br>
+                    ZIP ფაილის შემთხვევაში HTML შინაარსი ავტომატურად ამოიღება და გამოყენებული იქნება 3D viewer-ისთვის.
+                </small>
+            </div>
+        </div>
+        
+        <script>
+        // Show loading modal on form submit
+        document.querySelector('button[type="submit"]').addEventListener('click', function(e) {
+            // Check if any files are selected
+            const imageFiles = document.querySelector('input[name="image_files"]').files;
+            const modelFiles = document.querySelector('input[name="model_files"]').files;
+            const descFile = document.querySelector('input[name="description_file"]').files;
+            
+            const hasFiles = (imageFiles && imageFiles.length > 0) || 
+                            (modelFiles && modelFiles.length > 0) || 
+                            (descFile && descFile.length > 0);
+            
+            if (hasFiles) {
+                // Show loading modal
+                const modal = document.createElement('div');
+                modal.className = 'modal fade show';
+                modal.style.display = 'block';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">ატვირთვა...</h5>
+                            </div>
+                            <div class="modal-body text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">ატვირთვა...</span>
+                                </div>
+                                <p class="mt-3">გთხოვთ დაელოდოთ, ფაილები აიტვირთება...</p>
+                                <div class="progress mt-3">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                                </div>
+                                <small class="text-muted mt-2">3D ZIP ფაილების დამუშავება შეიძლება დიდხანს გასტანოს</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-backdrop fade show"></div>
+                `;
+                document.body.appendChild(modal);
+            }
+        });
+        </script>
+        
         <button type="submit" class="btn btn-primary">ატვირთვა</button>
         <a href="/admin/panel" class="btn btn-link">უკან</a>
     </form>
