@@ -306,8 +306,8 @@ PROJECTS_DIR = 'projects'
 PROJECTS_JSON = 'projects.json'
 COMMENTS_JSON = 'comments.json'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi', 'docx', 'html', 'pdf', 'txt', 'doc'}
-ADMIN_USERNAME = 'შენი_ადმინი'
-ADMIN_PASSWORD = 'შენი_ძლიერი_პაროლი_2024'  # შეცვალე production-ში
+ADMIN_USERNAME = 'kepulia'  # შეცვალე production-ში
+ADMIN_PASSWORD = 'Kepuliamwovela'  # შეცვალე production-ში
 
 # Initialize database
 with app.app_context():
