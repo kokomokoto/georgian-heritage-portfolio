@@ -615,237 +615,249 @@ def edit_project(project_id):
     }
     
     if request.method == 'POST':
-        # Get form data - only title is required
-        title = request.form.get('title', '').strip()
-        if not title:
-            flash('სათაური სავალდებულოა.', 'error')
-            return render_template('edit_project.html', project=project, description=project['description'])
-        
-        # Handle all images from the unified system
-        all_images = []
-        main_image_url = None
-        selected_main = request.form.get('main_image_selector', 'main')  # Default to main image
-        
-        # Handle main image separately
-        main_image_url_input = request.form.get('all_image_url_main', '').strip()
-        main_image_caption_input = request.form.get('all_image_caption_main', '').strip()
-        if main_image_url_input:
-            all_images.append({
-                'url': main_image_url_input,
-                'caption': main_image_caption_input,
-                'index': 'main'
-            })
-            if selected_main == 'main':
-                main_image_url = main_image_url_input
-        
-        # Collect all other images
-        i = 0
-        empty_count = 0
-        while empty_count < 3:  # Continue until we find 3 consecutive empty image fields
-            image_url = request.form.get(f'all_image_url_{i}', '').strip()
-            image_caption = request.form.get(f'all_image_caption_{i}', '').strip()
-            if image_url:
-                all_images.append({
-                    'url': image_url,
-                    'caption': image_caption,
-                    'index': str(i)
-                })
-                if selected_main == str(i):
-                    main_image_url = image_url
-                empty_count = 0  # Reset empty count when we find a valid image
-            else:
-                empty_count += 1
-            i += 1
-        
-        # If no main image selected, use first image
-        if not main_image_url and all_images:
-            main_image_url = all_images[0]['url']
-        
-        # Create other_images array (exclude the main image)
-        other_images = []
-        for img in all_images:
-            if img['url'] != main_image_url:
-                other_images.append({
-                    'url': img['url'],
-                    'caption': img['caption']
-                })
-        
-        # Update project data in database
-        project_db.title = title
-        project_db.main_image = main_image_url
-        project_db.main_image_caption = main_image_caption_input if main_image_caption_input else None
-        project_db.other_images = json.dumps(other_images) if other_images else None
-        
-        # Save optional fields only if provided
-        desc = request.form.get('description', '').strip()
-        if desc:
-            project_db.description = desc
-        
-        viewer3d = request.form.get('viewer3d', '').strip()
-        if viewer3d:
-            project_db.viewer3D = viewer3d
-            
-        # Save coordinates
-        latitude = request.form.get('latitude', '').strip()
-        longitude = request.form.get('longitude', '').strip()
-        sort_order = request.form.get('sort_order', '0').strip()
-        if latitude:
-            project_db.latitude = latitude
-        if longitude:
-            project_db.longitude = longitude
         try:
-            project_db.sort_order = int(sort_order) if sort_order else 0
-        except ValueError:
-            project_db.sort_order = 0
-            
-        # Save loading media
-        loading_video = request.form.get('loading_video', '').strip()
-        loading_audio = request.form.get('loading_audio', '').strip()
-        if loading_video:
-            project_db.loading_video = loading_video
-        if loading_audio:
-            project_db.loading_audio = loading_audio
-            
-        # Save project info
-        project_info = {}
-        i = 0
-        while True:
-            key = request.form.get(f'info_key_{i}', '').strip()
-            value = request.form.get(f'info_value_{i}', '').strip()
-            if key and value:
-                project_info[key] = value
-            elif not key:
-                break
-            i += 1
-        if project_info:
-            project_db.project_info = json.dumps(project_info)
-            
-        # Save categories
-        type_categories = request.form.getlist('type_categories')
-        period_categories = request.form.getlist('period_categories')
-        if type_categories:
-            project_db.type_categories = json.dumps(type_categories)
-        if period_categories:
-            project_db.period_categories = json.dumps(period_categories)
-            
-        # Handle file uploads to Cloudinary
-        uploaded_urls = []
+            # Get form data - only title is required
+            title = request.form.get('title', '').strip()
+            if not title:
+                flash('სათაური სავალდებულოა.', 'error')
+                return render_template('edit_project.html', project=project, description=project['description'])
         
-        # Upload image files
-        image_files = request.files.getlist('image_files')
-        for file in image_files:
-            if file and file.filename:
-                try:
-                    # Upload to Cloudinary
-                    upload_result = cloudinary.uploader.upload(file, folder=f"portfolio/projects/{project_id}")
-                    uploaded_urls.append({
-                        'url': upload_result['secure_url'],
-                        'caption': f"ატვირთული სურათი: {file.filename}",
-                        'type': 'image'
+            # Handle all images from the unified system
+            all_images = []
+            main_image_url = None
+            selected_main = request.form.get('main_image_selector', 'main')  # Default to main image
+            
+            # Handle main image separately
+            main_image_url_input = request.form.get('all_image_url_main', '').strip()
+            main_image_caption_input = request.form.get('all_image_caption_main', '').strip()
+            if main_image_url_input:
+                all_images.append({
+                    'url': main_image_url_input,
+                    'caption': main_image_caption_input,
+                    'index': 'main'
+                })
+                if selected_main == 'main':
+                    main_image_url = main_image_url_input
+        
+            # Collect all other images
+            i = 0
+            empty_count = 0
+            while empty_count < 3:  # Continue until we find 3 consecutive empty image fields
+                image_url = request.form.get(f'all_image_url_{i}', '').strip()
+                image_caption = request.form.get(f'all_image_caption_{i}', '').strip()
+                if image_url:
+                    all_images.append({
+                        'url': image_url,
+                        'caption': image_caption,
+                        'index': str(i)
                     })
-                    print(f"Uploaded image {file.filename} to Cloudinary: {upload_result['secure_url']}")
-                    flash(f'სურათი წარმატებით აიტვირთა: {file.filename}', 'success')
-                except Exception as e:
-                    print(f"Failed to upload image {file.filename}: {e}")
-                    flash(f'სურათის ატვირთვა ვერ მოხერხდა: {file.filename}', 'error')
+                    if selected_main == str(i):
+                        main_image_url = image_url
+                    empty_count = 0  # Reset empty count when we find a valid image
+                else:
+                    empty_count += 1
+                i += 1
         
-        # Upload 3D model files
-        model_files = request.files.getlist('model_files')
-        for file in model_files:
-            if file and file.filename:
-                filename_lower = file.filename.lower()
-                try:
-                    if filename_lower.endswith('.zip'):
-                        # For ZIP files, extract HTML content for 3D viewer
-                        extracted_html = extract_text_from_file(file, project_id)
-                        if extracted_html:
-                            # Save HTML content to viewer3D field
-                            project_db.viewer3D = extracted_html
-                            print(f"Extracted HTML from 3D ZIP file {file.filename} and saved to viewer3D field")
-                            flash(f'3D ZIP ფაილიდან HTML ექსტრაქცია შესრულებულია: {file.filename}', 'success')
-                        else:
-                            # If no HTML found, upload ZIP to Cloudinary
-                            upload_result = cloudinary.uploader.upload(file, folder=f"portfolio/projects/{project_id}/models", resource_type="raw")
-                            uploaded_urls.append({
-                                'url': upload_result['secure_url'],
-                                'caption': f"3D ZIP ფაილი: {file.filename}",
-                                'type': 'model'
-                            })
-                            print(f"Uploaded 3D ZIP file {file.filename} to Cloudinary: {upload_result['secure_url']}")
-                            flash(f'3D ZIP ფაილი აიტვირთა: {file.filename}', 'success')
-                    else:
-                        # For regular 3D files, upload to Cloudinary
-                        upload_result = cloudinary.uploader.upload(file, folder=f"portfolio/projects/{project_id}/models", resource_type="auto")
+            # If no main image selected, use first image
+            if not main_image_url and all_images:
+                main_image_url = all_images[0]['url']
+            
+            # Create other_images array (exclude the main image)
+            other_images = []
+            for img in all_images:
+                if img['url'] != main_image_url:
+                    other_images.append({
+                        'url': img['url'],
+                        'caption': img['caption']
+                    })
+        
+            # Update project data in database
+            project_db.title = title
+            project_db.main_image = main_image_url
+            project_db.main_image_caption = main_image_caption_input if main_image_caption_input else None
+            project_db.other_images = json.dumps(other_images) if other_images else None
+            
+            # Save optional fields only if provided
+            desc = request.form.get('description', '').strip()
+            if desc:
+                project_db.description = desc
+            
+            viewer3d = request.form.get('viewer3d', '').strip()
+            if viewer3d:
+                project_db.viewer3D = viewer3d
+                
+            # Save coordinates
+            latitude = request.form.get('latitude', '').strip()
+            longitude = request.form.get('longitude', '').strip()
+            sort_order = request.form.get('sort_order', '0').strip()
+            if latitude:
+                project_db.latitude = latitude
+            if longitude:
+                project_db.longitude = longitude
+            try:
+                project_db.sort_order = int(sort_order) if sort_order else 0
+            except ValueError:
+                project_db.sort_order = 0
+                
+            # Save loading media
+            loading_video = request.form.get('loading_video', '').strip()
+            loading_audio = request.form.get('loading_audio', '').strip()
+            if loading_video:
+                project_db.loading_video = loading_video
+            if loading_audio:
+                project_db.loading_audio = loading_audio
+                
+            # Save project info
+            project_info = {}
+            i = 0
+            while True:
+                key = request.form.get(f'info_key_{i}', '').strip()
+                value = request.form.get(f'info_value_{i}', '').strip()
+                if key and value:
+                    project_info[key] = value
+                elif not key:
+                    break
+                i += 1
+            if project_info:
+                project_db.project_info = json.dumps(project_info)
+                
+            # Save categories
+            type_categories = request.form.getlist('type_categories')
+            period_categories = request.form.getlist('period_categories')
+            if type_categories:
+                project_db.type_categories = json.dumps(type_categories)
+            if period_categories:
+                project_db.period_categories = json.dumps(period_categories)
+            
+            # Handle file uploads to Cloudinary
+            uploaded_urls = []
+            
+            # Upload image files
+            image_files = request.files.getlist('image_files')
+            for file in image_files:
+                if file and file.filename:
+                    try:
+                        # Upload to Cloudinary
+                        upload_result = cloudinary.uploader.upload(file, folder=f"portfolio/projects/{project_id}")
                         uploaded_urls.append({
                             'url': upload_result['secure_url'],
-                            'caption': f"3D მოდელი: {file.filename}",
-                            'type': 'model'
+                            'caption': f"ატვირთული სურათი: {file.filename}",
+                            'type': 'image'
                         })
-                        print(f"Uploaded 3D model {file.filename} to Cloudinary: {upload_result['secure_url']}")
-                        flash(f'3D მოდელი აიტვირთა: {file.filename}', 'success')
-                except Exception as e:
-                    print(f"Failed to upload 3D file {file.filename}: {e}")
-                    flash(f'3D ფაილის ატვირთვა ვერ მოხერხდა: {file.filename}', 'error')
+                        print(f"Uploaded image {file.filename} to Cloudinary: {upload_result['secure_url']}")
+                        flash(f'სურათი წარმატებით აიტვირთა: {file.filename}', 'success')
+                    except Exception as e:
+                        print(f"Failed to upload image {file.filename}: {e}")
+                        flash(f'სურათის ატვირთვა ვერ მოხერხდა: {file.filename}', 'error')
+                    flash(f'სურათის ატვირთვა ვერ მოხერხდა: {file.filename}', 'error')
         
-        # Upload description file
-        description_file = request.files.get('description_file')
-        if description_file and description_file.filename:
-            try:
-                # Try to extract text from the file
-                extracted_text = extract_text_from_file(description_file, project_id)
+                    # Upload 3D model files
+                    model_files = request.files.getlist('model_files')
+                    for file in model_files:
+                        if file and file.filename:
+                            filename_lower = file.filename.lower()
+                            try:
+                                if filename_lower.endswith('.zip'):
+                                    # For ZIP files, extract HTML content for 3D viewer
+                                    extracted_html = extract_text_from_file(file, project_id)
+                                    if extracted_html:
+                                        # Save HTML content to viewer3D field
+                                        project_db.viewer3D = extracted_html
+                                        print(f"Extracted HTML from 3D ZIP file {file.filename} and saved to viewer3D field")
+                                        flash(f'3D ZIP ფაილიდან HTML ექსტრაქცია შესრულებულია: {file.filename}', 'success')
+                                    else:
+                                        # If no HTML found, upload ZIP to Cloudinary
+                                        upload_result = cloudinary.uploader.upload(file, folder=f"portfolio/projects/{project_id}/models", resource_type="raw")
+                                        uploaded_urls.append({
+                                            'url': upload_result['secure_url'],
+                                            'caption': f"3D ZIP ფაილი: {file.filename}",
+                                            'type': 'model'
+                                        })
+                                        print(f"Uploaded 3D ZIP file {file.filename} to Cloudinary: {upload_result['secure_url']}")
+                                        flash(f'3D ZIP ფაილი აიტვირთა: {file.filename}', 'success')
+                                else:
+                                    # For regular 3D files, upload to Cloudinary
+                                    upload_result = cloudinary.uploader.upload(file, folder=f"portfolio/projects/{project_id}/models", resource_type="auto")
+                                    uploaded_urls.append({
+                                        'url': upload_result['secure_url'],
+                                        'caption': f"3D მოდელი: {file.filename}",
+                                        'type': 'model'
+                                    })
+                                    print(f"Uploaded 3D model {file.filename} to Cloudinary: {upload_result['secure_url']}")
+                                    flash(f'3D მოდელი აიტვირთა: {file.filename}', 'success')
+                            except Exception as e:
+                                print(f"Failed to upload 3D file {file.filename}: {e}")
+                                flash(f'3D ფაილის ატვირთვა ვერ მოხერხდა: {file.filename}', 'error')
+        
+                    # Upload description file
+                    description_file = request.files.get('description_file')
+                    if description_file and description_file.filename:
+                        try:
+                            # Try to extract text from the file
+                            extracted_text = extract_text_from_file(description_file, project_id)
+                            
+                            if extracted_text:
+                                filename_lower = description_file.filename.lower()
+                                if filename_lower.endswith('.zip'):
+                                    # For ZIP files (3D viewers), save HTML content to viewer3D field
+                                    project_db.viewer3D = extracted_text
+                                    project_db.description_file = None
+                                    print(f"Extracted HTML from 3D ZIP file {description_file.filename} and saved to viewer3D field")
+                                    flash(f'3D ZIP ფაილიდან HTML ექსტრაქცია შესრულებულია: {description_file.filename}', 'success')
+                                else:
+                                    # For other text files, save to description field
+                                    project_db.description = clean_description(extracted_text)
+                                    project_db.description_file = None  # Clear file URL since we have text
+                                    print(f"Extracted text from description file {description_file.filename} and saved to description field")
+                                    flash(f'აღწერის ტექსტი ექსტრაქტირებულია: {description_file.filename}', 'success')
+                            else:
+                                # If text extraction failed, upload file to Cloudinary and save URL
+                                upload_result = cloudinary.uploader.upload(description_file, folder=f"portfolio/projects/{project_id}/docs", resource_type="raw")
+                                project_db.description_file = upload_result['secure_url']
+                                print(f"Uploaded description file {description_file.filename} to Cloudinary: {upload_result['secure_url']}")
+                        except Exception as e:
+                            print(f"Failed to process description file {description_file.filename}: {e}")
+                            flash(f'აღწერის ფაილის დამუშავება ვერ მოხერხდა: {description_file.filename}', 'error')
+            
+            # Add uploaded URLs to existing images
+            if uploaded_urls:
+                # Get existing other_images
+                existing_other_images = other_images.copy()
+                existing_model_urls = json.loads(project_db.model_urls) if project_db.model_urls else []
                 
-                if extracted_text:
-                    filename_lower = description_file.filename.lower()
-                    if filename_lower.endswith('.zip'):
-                        # For ZIP files (3D viewers), save HTML content to viewer3D field
-                        project_db.viewer3D = extracted_text
-                        project_db.description_file = None
-                        print(f"Extracted HTML from 3D ZIP file {description_file.filename} and saved to viewer3D field")
-                        flash(f'3D ZIP ფაილიდან HTML ექსტრაქცია შესრულებულია: {description_file.filename}', 'success')
-                    else:
-                        # For other text files, save to description field
-                        project_db.description = clean_description(extracted_text)
-                        project_db.description_file = None  # Clear file URL since we have text
-                        print(f"Extracted text from description file {description_file.filename} and saved to description field")
-                        flash(f'აღწერის ტექსტი ექსტრაქტირებულია: {description_file.filename}', 'success')
-                else:
-                    # If text extraction failed, upload file to Cloudinary and save URL
-                    upload_result = cloudinary.uploader.upload(description_file, folder=f"portfolio/projects/{project_id}/docs", resource_type="raw")
-                    project_db.description_file = upload_result['secure_url']
-                    print(f"Uploaded description file {description_file.filename} to Cloudinary: {upload_result['secure_url']}")
+                # Add uploaded files to appropriate arrays
+                for uploaded in uploaded_urls:
+                    if uploaded['type'] == 'image':
+                        existing_other_images.append({
+                            'url': uploaded['url'],
+                            'caption': uploaded['caption']
+                        })
+                    elif uploaded['type'] == 'model':
+                        existing_model_urls.append({
+                            'url': uploaded['url'],
+                            'caption': uploaded['caption']
+                        })
+                
+                # Update database
+                project_db.other_images = json.dumps(existing_other_images) if existing_other_images else None
+                project_db.model_urls = json.dumps(existing_model_urls) if existing_model_urls else None
+                
+                flash(f'ატვირთულია {len(uploaded_urls)} ფაილი Cloudinary-ზე!', 'success')
+            
+            # Commit changes (moved outside the uploaded_urls condition)
+            try:
+                db.session.commit()
+                flash('პროექტი წარმატებით განახლდა!', 'success')
             except Exception as e:
-                print(f"Failed to process description file {description_file.filename}: {e}")
-                flash(f'აღწერის ფაილის დამუშავება ვერ მოხერხდა: {description_file.filename}', 'error')
-        
-        # Add uploaded URLs to existing images
-        if uploaded_urls:
-            # Get existing other_images
-            existing_other_images = other_images.copy()
-            existing_model_urls = json.loads(project_db.model_urls) if project_db.model_urls else []
-            
-            # Add uploaded files to appropriate arrays
-            for uploaded in uploaded_urls:
-                if uploaded['type'] == 'image':
-                    existing_other_images.append({
-                        'url': uploaded['url'],
-                        'caption': uploaded['caption']
-                    })
-                elif uploaded['type'] == 'model':
-                    existing_model_urls.append({
-                        'url': uploaded['url'],
-                        'caption': uploaded['caption']
-                    })
-            
-            # Update database
-            project_db.other_images = json.dumps(existing_other_images) if existing_other_images else None
-            project_db.model_urls = json.dumps(existing_model_urls) if existing_model_urls else None
-            
-            flash(f'ატვირთულია {len(uploaded_urls)} ფაილი Cloudinary-ზე!', 'success')
-            
-        # Commit changes
-        db.session.commit()
-        flash('პროექტი წარმატებით განახლდა!', 'success')
-        return redirect(url_for('admin_panel'))
+                db.session.rollback()
+                flash('შეცდომა პროექტის განახლებისას.', 'error')
+                return redirect(url_for('edit_project', project_id=project_id))
+                    
+            return redirect(url_for('admin_panel'))
+        except Exception as e:
+            print(f"Unexpected error in edit_project POST processing: {e}")
+            flash('შეცდომა ფორმის დამუშავებისას.', 'error')
+            return redirect(url_for('edit_project', project_id=project_id))
     
     return render_template('edit_project.html', project=project, description=project['description'])
 
