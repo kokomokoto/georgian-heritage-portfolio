@@ -8,6 +8,16 @@
 <body>
 <div class="container mt-4">
     <h1>ადმინ პანელი</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'error' else 'info' }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
     <div class="mb-3">
         <a href="/admin/upload" class="btn btn-success">ახალი პროექტის დამატება</a>
         <a href="/admin/database" class="btn btn-info">📊 მონაცემთა ბაზის ნახვა</a>

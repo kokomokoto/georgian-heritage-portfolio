@@ -2001,10 +2001,14 @@ def upload_project():
             with open('upload_debug.log', 'a', encoding='utf-8') as f:
                 f.write(f"Error in file upload block: {e}\n")
             flash('შეცდომა ფაილების ატვირთვისას.', 'error')
+        
+        # Commit the project to database (moved outside the file upload exception handler)
+        try:
             db.session.commit()
             print("DEBUG: Project saved successfully to database")
             with open('upload_debug.log', 'a', encoding='utf-8') as f:
                 f.write("Project saved successfully to database\n")
+            flash('პროექტი წარმატებით შეინახა!', 'success')
         except Exception as e:
             print(f"DEBUG: Error saving project to database: {e}")
             db.session.rollback()

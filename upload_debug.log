@@ -1,1 +1,9 @@
 Upload called - Method: GET, Content-Type: None
+Upload called - Method: POST, Content-Type: multipart/form-data; boundary=----WebKitFormBoundarybBYaDMT8UUsACHQx
+POST request received
+Form data - title: aaaaaaaa
+Starting image processing
+Processing images
+Found 2 images
+Processing ZIP files for 3D models
+Project saved successfully to database
