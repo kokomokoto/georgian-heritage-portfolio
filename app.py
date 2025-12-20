@@ -2,6 +2,7 @@ import os
 import time
 import uuid
 import io
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
 from werkzeug.utils import secure_filename
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -470,23 +471,48 @@ def track_user_visit(page_url=None, user_agent=None, screen_resolution=None, ref
     try:
         # Get user data
         ip_address = get_client_ip()
-        session_id = session.get('user_session_id')
+        
+        # Validate IP address - if invalid, set to None
+        if not ip_address or ip_address == 'None':
+            ip_address = None
+        
+        # Get session ID safely
+        session_id = None
+        try:
+            session_id = session.get('user_session_id')
+        except RuntimeError:
+            # Outside request context
+            session_id = str(uuid.uuid4())
         
         # Generate session ID if not exists
         if not session_id:
             session_id = str(uuid.uuid4())
-            session['user_session_id'] = session_id
+            try:
+                session['user_session_id'] = session_id
+            except RuntimeError:
+                # Outside request context, can't set session
+                pass
+        
+        # Get user ID safely
+        user_id = None
+        try:
+            if current_user.is_authenticated:
+                user_id = current_user.id
+        except RuntimeError:
+            # Outside request context
+            pass
         
         # Prepare data for Supabase
         visit_data = {
             'session_id': session_id,
             'ip_address': ip_address,
-            'user_agent': user_agent or request.headers.get('User-Agent'),
-            'page_url': page_url or request.url,
+            'user_agent': user_agent or (request.headers.get('User-Agent') if request else 'Unknown'),
+            'page_url': page_url or (request.url if request else 'Unknown'),
             'screen_resolution': screen_resolution,
-            'referrer': referrer or request.referrer,
-            'timestamp': 'now()',
-            'user_id': current_user.id if current_user.is_authenticated else None
+            'referrer': referrer or (request.referrer if request else None),
+            'timestamp': datetime.utcnow().isoformat(),
+            'user_id': user_id,
+            'action': 'page_view'  # Always set action
         }
         
         # Insert into Supabase
@@ -503,8 +529,13 @@ def get_user_analytics(days=30):
         return None
     
     try:
+        # Calculate the timestamp for N days ago
+        from datetime import datetime, timedelta
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_iso = cutoff_date.isoformat()
+        
         # Get visits from last N days
-        result = supabase.table('user_visits').select('*').gte('timestamp', f'now() - {days} days').execute()
+        result = supabase.table('user_visits').select('*').gte('timestamp', cutoff_iso).execute()
         return result.data
     except Exception as e:
         print(f"Failed to get user analytics: {e}")

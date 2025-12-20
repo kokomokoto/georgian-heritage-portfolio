@@ -27,9 +27,10 @@ CREATE INDEX IF NOT EXISTS idx_user_visits_action ON user_visits(action);
 -- Enable Row Level Security (RLS)
 ALTER TABLE user_visits ENABLE ROW LEVEL SECURITY;
 
--- Create policy to allow inserts (for tracking visits)
-CREATE POLICY "Allow anonymous inserts" ON user_visits
+-- Create policy to allow inserts (for tracking visits) - allow all inserts
+CREATE POLICY "Allow all inserts" ON user_visits
     FOR INSERT
+    TO anon, authenticated
     WITH CHECK (true);
 
 -- Create policy to allow authenticated users to read their own data
