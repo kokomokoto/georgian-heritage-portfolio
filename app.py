@@ -337,6 +337,10 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 
 ADMIN_USERNAME = 'kepulia'  # შეცვალე production-ში
 ADMIN_PASSWORD = 'kepulia123'  # შეცვალე production-ში
 
+# Analytics credentials (separate from admin)
+ANALYTICS_USERNAME = 'analytics'
+ANALYTICS_PASSWORD = 'analytics2025'
+
 # Initialize database
 with app.app_context():
     try:
@@ -705,6 +709,14 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def analytics_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('analytics_logged_in'):
+            return redirect(url_for('analytics_login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
 # Routes
 
 @app.route('/admin/edit/<project_id>', methods=['GET', 'POST'])
@@ -1045,10 +1057,22 @@ def test_tracking():
         'message': 'Test tracking completed' if success else 'Test tracking failed'
     })
 
+@app.route('/analytics/login', methods=['GET', 'POST'])
+def analytics_login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if username == ANALYTICS_USERNAME and password == ANALYTICS_PASSWORD:
+            session['analytics_logged_in'] = True
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('analytics_dashboard'))
+        flash('არასწორი მონაცემები')
+    return render_template('analytics_login.html')
+
 @app.route('/analytics')
-@admin_required
+@analytics_required
 def analytics_dashboard():
-    """Analytics dashboard - requires admin login"""
+    """Analytics dashboard - requires analytics login"""
     
     # Get analytics data
     analytics_data = get_user_analytics(days=30)
@@ -1092,6 +1116,12 @@ def analytics_dashboard():
         stats['recent_visits'] = analytics_data[-20:]  # Last 20 visits
     
     return render_template('admin_analytics.html', stats=stats, analytics_data=analytics_data)
+
+@app.route('/analytics/logout')
+def analytics_logout():
+    """Logout from analytics dashboard"""
+    session.pop('analytics_logged_in', None)
+    return redirect(url_for('analytics_login'))
 
 @app.route('/')
 def index():
