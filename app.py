@@ -1029,9 +1029,26 @@ def debug_supabase():
         'supabase_key_masked': supabase_key[:10] + '...' if supabase_key else None
     })
 
+@app.route('/api/test-tracking')
+def test_tracking():
+    """Test endpoint to manually create a tracking record"""
+    success = track_user_visit(
+        page_url='https://test-domain.com/test-page',
+        user_agent='Test User Agent',
+        screen_resolution='1920x1080',
+        referrer='https://test-domain.com/'
+    )
+    
+    return jsonify({
+        'tracking_success': success,
+        'supabase_available': supabase is not None,
+        'message': 'Test tracking completed' if success else 'Test tracking failed'
+    })
+
 @app.route('/analytics')
+@admin_required
 def analytics_dashboard():
-    """Analytics dashboard - accessible without admin login"""
+    """Analytics dashboard - requires admin login"""
     
     # Get analytics data
     analytics_data = get_user_analytics(days=30)
