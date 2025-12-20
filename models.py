@@ -17,6 +17,7 @@ class User(UserMixin, db.Model):
     reset_token_expires = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
     
     # Comments relationship
     comments = db.relationship('Comment', backref='author', lazy=True)
