@@ -317,6 +317,14 @@ app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME') or 'your_ema
 from models import db, User, Comment, Like, Project
 from forms import RegistrationForm, LoginForm, ForgotPasswordForm, ResetPasswordForm
 
+# Add CORS headers for API endpoints
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return response
+
 # Initialize extensions
 db.init_app(app)
 migrate = Migrate(app, db)
@@ -525,7 +533,11 @@ def track_user_visit(page_url=None, user_agent=None, screen_resolution=None, ref
 
 def get_user_analytics(days=30):
     """Get user analytics from Supabase"""
+    print(f"Getting user analytics for {days} days")
+    print(f"Supabase client available: {supabase is not None}")
+    
     if not supabase:
+        print("No Supabase client, returning None")
         return None
     
     try:
@@ -533,9 +545,11 @@ def get_user_analytics(days=30):
         from datetime import datetime, timedelta
         cutoff_date = datetime.utcnow() - timedelta(days=days)
         cutoff_iso = cutoff_date.isoformat()
+        print(f"Cutoff date: {cutoff_iso}")
         
         # Get visits from last N days
         result = supabase.table('user_visits').select('*').gte('timestamp', cutoff_iso).execute()
+        print(f"Retrieved {len(result.data) if result.data else 0} records")
         return result.data
     except Exception as e:
         print(f"Failed to get user analytics: {e}")
@@ -979,6 +993,8 @@ def track_visit():
     """API endpoint to track user visits"""
     try:
         data = request.get_json() or {}
+        print(f"Track visit called with data: {data}")
+        print(f"Supabase client available: {supabase is not None}")
         
         # Track the visit
         success = track_user_visit(
@@ -987,6 +1003,8 @@ def track_visit():
             screen_resolution=data.get('screen_resolution'),
             referrer=data.get('referrer')
         )
+        
+        print(f"Tracking result: {success}")
         
         if success:
             return jsonify({'status': 'success'}), 200
@@ -997,20 +1015,19 @@ def track_visit():
         print(f"Error in track_visit: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/api/analytics')
-@login_required
-def get_analytics():
-    """Get user analytics data (admin only)"""
-    if not current_user.is_admin:
-        return jsonify({'error': 'Unauthorized'}), 403
+@app.route('/api/debug-supabase')
+def debug_supabase():
+    """Debug endpoint to check Supabase configuration"""
+    supabase_url = os.environ.get('SUPABASE_URL')
+    supabase_key = os.environ.get('SUPABASE_ANON_KEY')
     
-    days = int(request.args.get('days', 30))
-    analytics_data = get_user_analytics(days)
-    
-    if analytics_data:
-        return jsonify({'analytics': analytics_data}), 200
-    else:
-        return jsonify({'error': 'Failed to fetch analytics'}), 500
+    return jsonify({
+        'supabase_url_configured': bool(supabase_url),
+        'supabase_key_configured': bool(supabase_key),
+        'supabase_client_initialized': supabase is not None,
+        'supabase_url_masked': supabase_url[:20] + '...' if supabase_url else None,
+        'supabase_key_masked': supabase_key[:10] + '...' if supabase_key else None
+    })
 
 @app.route('/analytics')
 def analytics_dashboard():
