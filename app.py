@@ -326,7 +326,7 @@ PROJECTS_JSON = 'projects.json'
 COMMENTS_JSON = 'comments.json'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi', 'docx', 'html', 'pdf', 'txt', 'doc'}
 ADMIN_USERNAME = 'kepulia'  # შეცვალე production-ში
-ADMIN_PASSWORD = 'Kepulia123'  # შეცვალე production-ში
+ADMIN_PASSWORD = 'kepulia123'  # შეცვალე production-ში
 
 # Initialize database
 with app.app_context():
@@ -655,7 +655,7 @@ def save_comments(comments):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('logged_in') or session.get('admin_ip') != request.remote_addr:
+        if not session.get('logged_in'):
             return redirect(url_for('admin_login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
@@ -981,7 +981,7 @@ def get_analytics():
     else:
         return jsonify({'error': 'Failed to fetch analytics'}), 500
 
-@app.route('/admin/analytics')
+@app.route('/analytics')
 @login_required
 def analytics_dashboard():
     """Analytics dashboard for administrators"""
@@ -1543,7 +1543,6 @@ def admin_login():
         password = request.form['password']
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['logged_in'] = True
-            session['admin_ip'] = request.remote_addr
             return redirect(url_for('admin_panel'))
         flash('Invalid credentials')
     return render_template('login.html')
