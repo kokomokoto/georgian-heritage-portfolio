@@ -17,6 +17,10 @@ import re
 from functools import wraps
 from dotenv import load_dotenv
 from docx import Document
+from supabase import create_client, Client
+
+# Load environment variables
+load_dotenv()
 
 # Load environment variables
 load_dotenv()
@@ -262,6 +266,21 @@ def extract_text_from_file(file, project_id=None):
 
 app = Flask(__name__)
 
+# Initialize Supabase client
+supabase_url = os.environ.get('SUPABASE_URL')
+supabase_key = os.environ.get('SUPABASE_ANON_KEY')
+supabase: Client = None
+
+if supabase_url and supabase_key:
+    try:
+        supabase = create_client(supabase_url, supabase_key)
+        print("Supabase client initialized successfully")
+    except Exception as e:
+        print(f"Failed to initialize Supabase client: {e}")
+        supabase = None
+else:
+    print("Supabase credentials not configured, user monitoring will be disabled")
+
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your_secret_key_here'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///portfolio.db'
@@ -429,6 +448,67 @@ def send_password_reset_email(user):
         user=user,
         reset_url=reset_url
     )
+
+# User Monitoring Functions
+
+def get_client_ip():
+    """Get the client's real IP address"""
+    if request.headers.get('X-Forwarded-For'):
+        # Handle comma-separated IPs (first one is the original client)
+        ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    elif request.headers.get('X-Real-IP'):
+        ip = request.headers.get('X-Real-IP')
+    else:
+        ip = request.remote_addr
+    return ip
+
+def track_user_visit(page_url=None, user_agent=None, screen_resolution=None, referrer=None):
+    """Track user visit and store in Supabase"""
+    if not supabase:
+        return False
+    
+    try:
+        # Get user data
+        ip_address = get_client_ip()
+        session_id = session.get('user_session_id')
+        
+        # Generate session ID if not exists
+        if not session_id:
+            session_id = str(uuid.uuid4())
+            session['user_session_id'] = session_id
+        
+        # Prepare data for Supabase
+        visit_data = {
+            'session_id': session_id,
+            'ip_address': ip_address,
+            'user_agent': user_agent or request.headers.get('User-Agent'),
+            'page_url': page_url or request.url,
+            'screen_resolution': screen_resolution,
+            'referrer': referrer or request.referrer,
+            'timestamp': 'now()',
+            'user_id': current_user.id if current_user.is_authenticated else None
+        }
+        
+        # Insert into Supabase
+        result = supabase.table('user_visits').insert(visit_data).execute()
+        return True
+        
+    except Exception as e:
+        print(f"Failed to track user visit: {e}")
+        return False
+
+def get_user_analytics(days=30):
+    """Get user analytics from Supabase"""
+    if not supabase:
+        return None
+    
+    try:
+        # Get visits from last N days
+        result = supabase.table('user_visits').select('*').gte('timestamp', f'now() - {days} days').execute()
+        return result.data
+    except Exception as e:
+        print(f"Failed to get user analytics: {e}")
+        return None
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -860,6 +940,97 @@ def edit_project(project_id):
             return redirect(url_for('edit_project', project_id=project_id))
     
     return render_template('edit_project.html', project=project, description=project['description'])
+
+# User Monitoring API Endpoints
+
+@app.route('/api/track-visit', methods=['POST'])
+def track_visit():
+    """API endpoint to track user visits"""
+    try:
+        data = request.get_json() or {}
+        
+        # Track the visit
+        success = track_user_visit(
+            page_url=data.get('page_url'),
+            user_agent=data.get('user_agent'),
+            screen_resolution=data.get('screen_resolution'),
+            referrer=data.get('referrer')
+        )
+        
+        if success:
+            return jsonify({'status': 'success'}), 200
+        else:
+            return jsonify({'status': 'error', 'message': 'Failed to track visit'}), 500
+            
+    except Exception as e:
+        print(f"Error in track_visit: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/analytics')
+@login_required
+def get_analytics():
+    """Get user analytics data (admin only)"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    days = int(request.args.get('days', 30))
+    analytics_data = get_user_analytics(days)
+    
+    if analytics_data:
+        return jsonify({'analytics': analytics_data}), 200
+    else:
+        return jsonify({'error': 'Failed to fetch analytics'}), 500
+
+@app.route('/admin/analytics')
+@login_required
+def analytics_dashboard():
+    """Analytics dashboard for administrators"""
+    if not current_user.is_admin:
+        flash('თქვენ არ გაქვთ წვდომა ამ გვერდზე.', 'error')
+        return redirect(url_for('index'))
+    
+    # Get analytics data
+    analytics_data = get_user_analytics(days=30)
+    
+    # Process data for display
+    stats = {
+        'total_visits': 0,
+        'unique_sessions': 0,
+        'unique_ips': 0,
+        'authenticated_users': 0,
+        'screen_resolutions': [],
+        'popular_pages': [],
+        'recent_visits': []
+    }
+    
+    if analytics_data:
+        # Calculate statistics
+        sessions = set()
+        ips = set()
+        auth_users = set()
+        pages = {}
+        resolutions = set()
+        
+        for visit in analytics_data:
+            stats['total_visits'] += 1
+            sessions.add(visit['session_id'])
+            if visit['ip_address']:
+                ips.add(visit['ip_address'])
+            if visit['user_id']:
+                auth_users.add(visit['user_id'])
+            if visit['page_url']:
+                pages[visit['page_url']] = pages.get(visit['page_url'], 0) + 1
+            if visit['screen_resolution']:
+                resolutions.add(visit['screen_resolution'])
+        
+        stats['unique_sessions'] = len(sessions)
+        stats['unique_ips'] = len(ips)
+        stats['authenticated_users'] = len(auth_users)
+        stats['screen_resolutions'] = list(resolutions)
+        stats['popular_pages'] = sorted(pages.items(), key=lambda x: x[1], reverse=True)[:10]
+        stats['recent_visits'] = analytics_data[-20:]  # Last 20 visits
+    
+    return render_template('admin_analytics.html', stats=stats, analytics_data=analytics_data)
 
 @app.route('/')
 def index():

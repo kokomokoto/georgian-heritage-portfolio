@@ -101,3 +101,61 @@ The app has special support for 3D models created with tools like SuperSplat Edi
 7. **Test**: Upload a large file (>10MB) - it should go to R2 automatically
 
 **Note**: R2 URLs will be in format: `https://{account-id}.r2.cloudflarestorage.com/{bucket}/{file}`
+
+## User Monitoring & Analytics
+
+The app includes a comprehensive user monitoring system using Supabase to track visitor behavior and analytics.
+
+### Features Tracked
+- **IP Address**: Real client IP (handles proxies/X-Forwarded-For)
+- **Screen Resolution**: User's display resolution
+- **User Agent**: Browser and device information
+- **Page Visits**: All page views with timestamps
+- **Session Tracking**: Unique session IDs for user journeys
+- **Project Interactions**: Clicks on project cards
+- **Referrer Data**: Where users came from
+
+### Setup Supabase
+
+1. **Create Supabase Project**:
+   - Go to [supabase.com](https://supabase.com) and create account
+   - Create new project
+
+2. **Run Database Schema**:
+   - Go to SQL Editor in Supabase dashboard
+   - Copy and run the contents of `supabase_schema.sql`
+
+3. **Get API Keys**:
+   - Go to Settings → API
+   - Copy Project URL and anon/public key
+
+4. **Configure Environment**:
+   ```bash
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+### Analytics Dashboard
+
+Access the analytics dashboard at `/admin/analytics` (admin only):
+
+- **Real-time Statistics**: Total visits, unique sessions, IPs
+- **Popular Pages**: Most visited pages
+- **Screen Resolutions**: Device screen sizes
+- **Recent Activity**: Last 20 visits with details
+- **Raw Data Export**: JSON data for further analysis
+
+### Privacy & Compliance
+
+- **Anonymous Tracking**: No personal data stored without consent
+- **Session-based**: Uses anonymous session IDs
+- **GDPR Compliant**: Can be disabled by removing Supabase config
+- **Data Retention**: Configurable time periods (default: 30 days)
+
+### Technical Details
+
+- **Automatic Tracking**: JavaScript collects data on page load
+- **API Endpoints**: `/api/track-visit` for data collection
+- **Admin API**: `/api/analytics` for dashboard data
+- **Database**: PostgreSQL with Row Level Security
+- **Performance**: Asynchronous tracking, doesn't block page loads

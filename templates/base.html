@@ -213,5 +213,86 @@
         }
     </script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- User Monitoring Script -->
+    <script>
+        // User monitoring and analytics
+        (function() {
+            'use strict';
+            
+            // Function to get screen resolution
+            function getScreenResolution() {
+                return window.screen.width + 'x' + window.screen.height;
+            }
+            
+            // Function to track page visit
+            function trackVisit() {
+                const data = {
+                    page_url: window.location.href,
+                    user_agent: navigator.userAgent,
+                    screen_resolution: getScreenResolution(),
+                    referrer: document.referrer || null,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Send data to server
+                fetch('/api/track-visit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        console.warn('Failed to track visit:', response.status);
+                    }
+                })
+                .catch(error => {
+                    console.warn('Error tracking visit:', error);
+                });
+            }
+            
+            // Track visit on page load
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', trackVisit);
+            } else {
+                trackVisit();
+            }
+            
+            // Track visit on page visibility change (user returns to tab)
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    trackVisit();
+                }
+            });
+            
+            // Track clicks on important elements (optional)
+            document.addEventListener('click', function(e) {
+                // Track clicks on project cards
+                if (e.target.closest('.project-card')) {
+                    const card = e.target.closest('.project-card');
+                    const projectId = card.dataset.projectId || 'unknown';
+                    
+                    fetch('/api/track-visit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            page_url: window.location.href,
+                            user_agent: navigator.userAgent,
+                            screen_resolution: getScreenResolution(),
+                            referrer: document.referrer || null,
+                            action: 'project_click',
+                            project_id: projectId,
+                            timestamp: new Date().toISOString()
+                        })
+                    }).catch(error => console.warn('Error tracking click:', error));
+                }
+            });
+            
+        })();
+    </script>
 </body>
 </html>

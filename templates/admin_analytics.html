@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ანალიტიკა - ადმინის პანელი</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3">მომხმარებელთა ანალიტიკა</h1>
+                    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left me-2"></i>უკან ადმინის პანელში
+                    </a>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h5 class="card-title mb-0">{{ stats.total_visits }}</h5>
+                                        <small>სულ ვიზიტი</small>
+                                    </div>
+                                    <i class="bi bi-eye-fill fs-1 opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h5 class="card-title mb-0">{{ stats.unique_sessions }}</h5>
+                                        <small>უნიკალური სესია</small>
+                                    </div>
+                                    <i class="bi bi-person-fill fs-1 opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h5 class="card-title mb-0">{{ stats.unique_ips }}</h5>
+                                        <small>უნიკალური IP</small>
+                                    </div>
+                                    <i class="bi bi-globe fs-1 opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h5 class="card-title mb-0">{{ stats.authenticated_users }}</h5>
+                                        <small>დარეგისტრირებული</small>
+                                    </div>
+                                    <i class="bi bi-person-check-fill fs-1 opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Popular Pages -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">პოპულარული გვერდები</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if stats.popular_pages %}
+                                    <div class="list-group list-group-flush">
+                                        {% for page, count in stats.popular_pages %}
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span class="text-truncate" style="max-width: 300px;" title="{{ page }}">
+                                                    {{ page.split('/')[-1] or 'მთავარი' }}
+                                                </span>
+                                                <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">მონაცემები არ არის ხელმისაწვდომი</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Screen Resolutions -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">ეკრანის რეზოლუციები</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if stats.screen_resolutions %}
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {% for resolution in stats.screen_resolutions %}
+                                            <span class="badge bg-secondary">{{ resolution }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">მონაცემები არ არის ხელმისაწვდომი</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Visits Table -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">ბოლო ვიზიტები</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if stats.recent_visits %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>დრო</th>
+                                            <th>IP მისამართი</th>
+                                            <th>გვერდი</th>
+                                            <th>ეკრანი</th>
+                                            <th>მოქმედება</th>
+                                            <th>სესია</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for visit in stats.recent_visits|reverse %}
+                                            <tr>
+                                                <td>{{ visit.timestamp[:19] if visit.timestamp else 'N/A' }}</td>
+                                                <td>
+                                                    <code class="small">{{ visit.ip_address or 'N/A' }}</code>
+                                                </td>
+                                                <td>
+                                                    <small class="text-truncate d-block" style="max-width: 200px;" title="{{ visit.page_url }}">
+                                                        {{ visit.page_url.split('/')[-1] or 'მთავარი' if visit.page_url else 'N/A' }}
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <small>{{ visit.screen_resolution or 'N/A' }}</small>
+                                                </td>
+                                                <td>
+                                                    <small class="badge bg-light text-dark">{{ visit.action or 'page_view' }}</small>
+                                                </td>
+                                                <td>
+                                                    <small class="text-muted">{{ visit.session_id[:8] if visit.session_id else 'N/A' }}...</small>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">ბოლო ვიზიტების მონაცემები არ არის ხელმისაწვდომი</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Raw Data (Collapsible) -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <button class="btn btn-link p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#rawData">
+                                დეტალური მონაცემები
+                                <i class="bi bi-chevron-down ms-2"></i>
+                            </button>
+                        </h5>
+                    </div>
+                    <div id="rawData" class="collapse">
+                        <div class="card-body">
+                            {% if analytics_data %}
+                                <pre class="bg-light p-3 rounded"><code>{{ analytics_data|tojson(indent=2) }}</code></pre>
+                            {% else %}
+                                <p class="text-muted">მონაცემები არ არის ხელმისაწვდომი. შეამოწმეთ Supabase კონფიგურაცია.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
