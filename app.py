@@ -338,8 +338,8 @@ ADMIN_USERNAME = 'kepulia'  # შეცვალე production-ში
 ADMIN_PASSWORD = 'kepulia123'  # შეცვალე production-ში
 
 # Analytics credentials (separate from admin)
-ANALYTICS_USERNAME = 'analytics'
-ANALYTICS_PASSWORD = 'analytics2025'
+ANALYTICS_USERNAME = 'kanalytics'
+ANALYTICS_PASSWORD = 'kanalytics2026'
 
 # Initialize database
 with app.app_context():
