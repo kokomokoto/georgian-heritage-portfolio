@@ -1013,12 +1013,8 @@ def get_analytics():
         return jsonify({'error': 'Failed to fetch analytics'}), 500
 
 @app.route('/analytics')
-@login_required
 def analytics_dashboard():
-    """Analytics dashboard for administrators"""
-    if not current_user.is_admin:
-        flash('თქვენ არ გაქვთ წვდომა ამ გვერდზე.', 'error')
-        return redirect(url_for('index'))
+    """Analytics dashboard - accessible without admin login"""
     
     # Get analytics data
     analytics_data = get_user_analytics(days=30)
