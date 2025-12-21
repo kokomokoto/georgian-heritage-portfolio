@@ -290,7 +290,7 @@
                                                 </td>
                                                 <td>
                                                     <small class="text-truncate" title="{{ visit.screen_resolution }}">
-                                                        {{ visit.screen_resolution.split('x')[0] if visit.screen_resolution else 'N/A' }}
+                                                        {{ visit.screen_resolution if visit.screen_resolution else 'N/A' }}
                                                     </small>
                                                 </td>
                                                 <td>
@@ -356,15 +356,15 @@
                                                     <small>{{ ip_data.screen_resolutions|length }} ეკრანი</small>
                                                 </td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#ip-details-{{ loop.index }}" aria-expanded="true">
+                                                    <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#ip-details-{{ loop.index }}" aria-expanded="false">
                                                         დეტალები
                                                     </button>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td colspan="7" class="p-0">
-                                                    <div id="ip-details-{{ loop.index }}" class="collapse show">
-                                                        <div class="card card-body m-2">
+                                                    <div id="ip-details-{{ loop.index }}" class="collapse">
+                                                        <div class="card card-body m-2 recent-visits-card">
                                                             <h6>IP: {{ ip_data.ip }}</h6>
                                                             
                                                             <div class="row">
@@ -372,7 +372,7 @@
                                                                     <h6>მოწყობილობები:</h6>
                                                                     <ul class="list-unstyled">
                                                                         {% for ua in ip_data.user_agents %}
-                                                                            <li><small class="text-muted">{{ ua[:50] }}{% if ua|length > 50 %}...{% endif %}</small></li>
+                                                                            <li><small class="text-muted">{{ ua[:150] }}{% if ua|length > 150 %}...{% endif %}</small></li>
                                                                         {% endfor %}
                                                                     </ul>
                                                                 </div>
@@ -387,7 +387,7 @@
                                                             </div>
                                                             
                                                             <h6>ბოლო 10 ვიზიტი:</h6>
-                                                            <div class="table-responsive">
+                                                            <div class="recent-visits-table-container">
                                                                 <table class="table table-sm table-borderless">
                                                                     <thead>
                                                                         <tr>
