@@ -1114,6 +1114,32 @@ def analytics_dashboard():
         stats['screen_resolutions'] = list(resolutions)
         stats['popular_pages'] = sorted(pages.items(), key=lambda x: x[1], reverse=True)[:10]
         stats['recent_visits'] = analytics_data[-20:]  # Last 20 visits
+        
+        # Calculate unique IPs in recent visits
+        recent_ips = set()
+        for visit in stats['recent_visits']:
+            if visit['ip_address']:
+                recent_ips.add(visit['ip_address'])
+        stats['unique_ips_recent'] = len(recent_ips)
+        
+        # Calculate detailed IP statistics
+        stats['unique_ips_list'] = []
+        for ip in sorted(ips):
+            ip_visits = [v for v in analytics_data if v['ip_address'] == ip]
+            user_agents = list(set(v['user_agent'] for v in ip_visits if v['user_agent']))
+            screen_resolutions = list(set(v['screen_resolution'] for v in ip_visits if v['screen_resolution']))
+            pages_visited = list(set(v['page_url'] for v in ip_visits if v['page_url']))
+            
+            stats['unique_ips_list'].append({
+                'ip': ip,
+                'visit_count': len(ip_visits),
+                'first_visit': min(v['timestamp'] for v in ip_visits),
+                'last_visit': max(v['timestamp'] for v in ip_visits),
+                'user_agents': user_agents,
+                'screen_resolutions': screen_resolutions,
+                'pages_visited': pages_visited,
+                'visits': sorted(ip_visits, key=lambda x: x['timestamp'], reverse=True)[:10]  # Last 10 visits for this IP
+            })
     
     return render_template('admin_analytics.html', stats=stats, analytics_data=analytics_data)
 

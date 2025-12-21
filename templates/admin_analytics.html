@@ -314,6 +314,113 @@
                     </div>
                 </div>
 
+                <!-- Unique IPs Details -->
+                <div class="card mt-4 recent-visits-card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0 fw-bold">უნიკალური IP მისამართები ({{ stats.unique_ips }})</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if stats.unique_ips_list %}
+                            <div class="recent-visits-table-container">
+                                <table class="table table-striped table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th title="IP მისამართი">IP მისამართი</th>
+                                            <th title="ვიზიტების რაოდენობა">ვიზიტების რაოდენობა</th>
+                                            <th title="პირველი ვიზიტი">პირველი ვიზიტი</th>
+                                            <th title="ბოლო ვიზიტი">ბოლო ვიზიტი</th>
+                                            <th title="მოწყობილობები">მოწყობილობები</th>
+                                            <th title="ეკრანები">ეკრანები</th>
+                                            <th title="დეტალები">დეტალები</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ip_data in stats.unique_ips_list %}
+                                            <tr>
+                                                <td>
+                                                    <code>{{ ip_data.ip }}</code>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">{{ ip_data.visit_count }}</span>
+                                                </td>
+                                                <td>
+                                                    <small>{{ ip_data.first_visit[:19] if ip_data.first_visit else 'N/A' }}</small>
+                                                </td>
+                                                <td>
+                                                    <small>{{ ip_data.last_visit[:19] if ip_data.last_visit else 'N/A' }}</small>
+                                                </td>
+                                                <td>
+                                                    <small>{{ ip_data.user_agents|length }} მოწყობილობა</small>
+                                                </td>
+                                                <td>
+                                                    <small>{{ ip_data.screen_resolutions|length }} ეკრანი</small>
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#ip-details-{{ loop.index }}" aria-expanded="true">
+                                                        დეტალები
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="7" class="p-0">
+                                                    <div id="ip-details-{{ loop.index }}" class="collapse show">
+                                                        <div class="card card-body m-2">
+                                                            <h6>IP: {{ ip_data.ip }}</h6>
+                                                            
+                                                            <div class="row">
+                                                                <div class="col-md-6">
+                                                                    <h6>მოწყობილობები:</h6>
+                                                                    <ul class="list-unstyled">
+                                                                        {% for ua in ip_data.user_agents %}
+                                                                            <li><small class="text-muted">{{ ua[:50] }}{% if ua|length > 50 %}...{% endif %}</small></li>
+                                                                        {% endfor %}
+                                                                    </ul>
+                                                                </div>
+                                                                <div class="col-md-6">
+                                                                    <h6>ეკრანის რეზოლუციები:</h6>
+                                                                    <ul class="list-unstyled">
+                                                                        {% for res in ip_data.screen_resolutions %}
+                                                                            <li><small class="text-muted">{{ res }}</small></li>
+                                                                        {% endfor %}
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <h6>ბოლო 10 ვიზიტი:</h6>
+                                                            <div class="table-responsive">
+                                                                <table class="table table-sm table-borderless">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>დრო</th>
+                                                                            <th>გვერდი</th>
+                                                                            <th>მოქმედება</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {% for visit in ip_data.visits %}
+                                                                            <tr>
+                                                                                <td><small>{{ visit.timestamp[:19] if visit.timestamp else 'N/A' }}</small></td>
+                                                                                <td><small>{{ visit.page_url.split('/')[-1][:20] or 'მთავარი' if visit.page_url else 'N/A' }}</small></td>
+                                                                                <td><small>{{ visit.action or 'view' }}</small></td>
+                                                                            </tr>
+                                                                        {% endfor %}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">უნიკალური IP მისამართები არ არის ხელმისაწვდომი</p>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <!-- Raw Data (Collapsible) -->
                 <div class="card mt-4 raw-data-card">
                     <div class="card-header">
