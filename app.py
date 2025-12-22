@@ -288,13 +288,14 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlit
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
-# Session configuration for better persistence
+# Session configuration for better security
 app.config['SESSION_PERMANENT'] = True
-# app.config['SESSION_TYPE'] = 'filesystem'  # Use client-side sessions for cross-IP access
-app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
-app.config['SESSION_COOKIE_DOMAIN'] = ''  # Make session cookie domain-agnostic
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Allow same-site requests
-app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP in development
+app.config['SESSION_TYPE'] = 'filesystem'  # Use filesystem for better security
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour instead of 24 hours
+app.config['SESSION_COOKIE_DOMAIN'] = None  # Only this domain
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent XSS attacks
 
 # Remove SERVER_NAME for now as it can cause session issues
 # Only set SERVER_NAME for local development
@@ -333,13 +334,17 @@ mail = Mail(app)
 PROJECTS_DIR = 'projects'
 PROJECTS_JSON = 'projects.json'
 COMMENTS_JSON = 'comments.json'
+# Security Note: Credentials are now loaded from environment variables
+# Make sure to set ADMIN_USERNAME, ADMIN_PASSWORD, ANALYTICS_USERNAME, ANALYTICS_PASSWORD in .env file
+# NEVER commit the .env file to version control!
+
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi', 'docx', 'html', 'pdf', 'txt', 'doc'}
-ADMIN_USERNAME = 'kepulia'  # შეცვალე production-ში
-ADMIN_PASSWORD = 'kepulia123'  # შეცვალე production-ში
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'kepulia')  # შეცვალე production-ში
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'kepulia123')  # შეცვალე production-ში
 
 # Analytics credentials (separate from admin)
-ANALYTICS_USERNAME = 'kanalytics'
-ANALYTICS_PASSWORD = 'kanalytics2026'
+ANALYTICS_USERNAME = os.environ.get('ANALYTICS_USERNAME', 'kanalytics')
+ANALYTICS_PASSWORD = os.environ.get('ANALYTICS_PASSWORD', 'kanalytics2026')
 
 # Initialize database
 with app.app_context():
@@ -1059,14 +1064,29 @@ def test_tracking():
 
 @app.route('/analytics/login', methods=['GET', 'POST'])
 def analytics_login():
+    # Rate limiting: max 5 attempts per 15 minutes
+    now = datetime.utcnow()
+    attempts = session.get('analytics_login_attempts', [])
+    # Clean old attempts (older than 15 minutes)
+    attempts = [t for t in attempts if (now - t).seconds < 900]
+    
+    if len(attempts) >= 5:
+        flash('ხშირი შესვლის მცდელობა. გთხოვთ სცადოთ 15 წუთში.', 'error')
+        return render_template('analytics_login.html')
+    
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         if username == ANALYTICS_USERNAME and password == ANALYTICS_PASSWORD:
             session['analytics_logged_in'] = True
+            session.pop('analytics_login_attempts', None)  # Reset attempts on success
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('analytics_dashboard'))
-        flash('არასწორი მონაცემები')
+        else:
+            # Record failed attempt
+            attempts.append(now)
+            session['analytics_login_attempts'] = attempts
+            flash('არასწორი მონაცემები')
     return render_template('analytics_login.html')
 
 @app.route('/analytics')
@@ -1655,13 +1675,28 @@ def delete_comment(comment_id, project_id):
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_login():
+    # Rate limiting: max 5 attempts per 15 minutes
+    now = datetime.utcnow()
+    attempts = session.get('login_attempts', [])
+    # Clean old attempts (older than 15 minutes)
+    attempts = [t for t in attempts if (now - t).seconds < 900]
+    
+    if len(attempts) >= 5:
+        flash('ხშირი შესვლის მცდელობა. გთხოვთ სცადოთ 15 წუთში.', 'error')
+        return render_template('login.html')
+    
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['logged_in'] = True
+            session.pop('login_attempts', None)  # Reset attempts on success
             return redirect(url_for('admin_panel'))
-        flash('Invalid credentials')
+        else:
+            # Record failed attempt
+            attempts.append(now)
+            session['login_attempts'] = attempts
+            flash('Invalid credentials')
     return render_template('login.html')
 
 @app.route('/debug/session')
