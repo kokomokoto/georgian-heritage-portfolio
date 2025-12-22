@@ -290,12 +290,10 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
 # Session configuration for better security
 app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_TYPE'] = 'filesystem'  # Use filesystem for better security
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour instead of 24 hours
 app.config['SESSION_COOKIE_DOMAIN'] = None  # Only this domain
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent XSS attacks
 
 # Remove SERVER_NAME for now as it can cause session issues
 # Only set SERVER_NAME for local development
@@ -1064,28 +1062,29 @@ def test_tracking():
 
 @app.route('/analytics/login', methods=['GET', 'POST'])
 def analytics_login():
+    # Temporarily disabled rate limiting for debugging
     # Rate limiting: max 5 attempts per 15 minutes
-    now = datetime.utcnow()
-    attempts = session.get('analytics_login_attempts', [])
+    # now = datetime.utcnow().timestamp()
+    # attempts = session.get('analytics_login_attempts', [])
     # Clean old attempts (older than 15 minutes)
-    attempts = [t for t in attempts if (now - t).seconds < 900]
+    # attempts = [t for t in attempts if now - t < 900]
     
-    if len(attempts) >= 5:
-        flash('ხშირი შესვლის მცდელობა. გთხოვთ სცადოთ 15 წუთში.', 'error')
-        return render_template('analytics_login.html')
+    # if len(attempts) >= 5:
+    #     flash('ხშირი შესვლის მცდელობა. გთხოვთ სცადოთ 15 წუთში.', 'error')
+    #     return render_template('analytics_login.html')
     
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         if username == ANALYTICS_USERNAME and password == ANALYTICS_PASSWORD:
             session['analytics_logged_in'] = True
-            session.pop('analytics_login_attempts', None)  # Reset attempts on success
+            # session.pop('analytics_login_attempts', None)  # Reset attempts on success
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('analytics_dashboard'))
         else:
             # Record failed attempt
-            attempts.append(now)
-            session['analytics_login_attempts'] = attempts
+            # attempts.append(now)
+            # session['analytics_login_attempts'] = attempts
             flash('არასწორი მონაცემები')
     return render_template('analytics_login.html')
 
@@ -1675,27 +1674,28 @@ def delete_comment(comment_id, project_id):
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_login():
+    # Temporarily disabled rate limiting for debugging
     # Rate limiting: max 5 attempts per 15 minutes
-    now = datetime.utcnow()
-    attempts = session.get('login_attempts', [])
+    # now = datetime.utcnow().timestamp()
+    # attempts = session.get('login_attempts', [])
     # Clean old attempts (older than 15 minutes)
-    attempts = [t for t in attempts if (now - t).seconds < 900]
+    # attempts = [t for t in attempts if now - t < 900]
     
-    if len(attempts) >= 5:
-        flash('ხშირი შესვლის მცდელობა. გთხოვთ სცადოთ 15 წუთში.', 'error')
-        return render_template('login.html')
+    # if len(attempts) >= 5:
+    #     flash('ხშირი შესვლის მცდელობა. გთხოვთ სცადოთ 15 წუთში.', 'error')
+    #     return render_template('login.html')
     
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session['logged_in'] = True
-            session.pop('login_attempts', None)  # Reset attempts on success
+            # session.pop('login_attempts', None)  # Reset attempts on success
             return redirect(url_for('admin_panel'))
         else:
             # Record failed attempt
-            attempts.append(now)
-            session['login_attempts'] = attempts
+            # attempts.append(now)
+            # session['login_attempts'] = attempts
             flash('Invalid credentials')
     return render_template('login.html')
 
@@ -1709,9 +1709,14 @@ def debug_session():
     <h1>Session Debug Info</h1>
     <p><strong>Session data:</strong> {dict(session)}</p>
     <p><strong>logged_in value:</strong> {session.get('logged_in')}</p>
+    <p><strong>analytics_logged_in value:</strong> {session.get('analytics_logged_in')}</p>
+    <p><strong>login_attempts:</strong> {session.get('login_attempts', [])}</p>
+    <p><strong>analytics_login_attempts:</strong> {session.get('analytics_login_attempts', [])}</p>
     <p><strong>Current user:</strong> {current_user.is_authenticated if current_user else 'None'}</p>
     <p><strong>Request remote addr:</strong> {request.remote_addr}</p>
     <p><strong>Request host:</strong> {request.host}</p>
+    <br>
+    <a href="/admin">Go to Admin Login</a> | <a href="/analytics/login">Go to Analytics Login</a>
     </body>
     </html>
     """
