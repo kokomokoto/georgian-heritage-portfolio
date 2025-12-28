@@ -1760,6 +1760,15 @@ def export_comments_public():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/export-projects')
+def export_projects_public():
+    """Export all projects as JSON - public route for syncing"""
+    try:
+        projects = load_projects()
+        return jsonify(projects)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/admin/export-projects')
 def export_projects():
     """Export all projects as JSON - temporary route for syncing"""
