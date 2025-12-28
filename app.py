@@ -1221,7 +1221,19 @@ def debug():
         'projects_json_exists': os.path.exists(PROJECTS_JSON),
         'templates_exist': os.path.exists('templates'),
         'index_template_exists': os.path.exists('templates/index.html'),
+        'database_url_env': os.environ.get('DATABASE_URL', 'NOT SET'),
+        'database_url_config': app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET'),
+        'flask_env': os.environ.get('FLASK_ENV', 'NOT SET'),
     }
+
+    # Try to connect to database
+    try:
+        from models import Project
+        project_count = Project.query.count()
+        debug_info['database_connection'] = f'SUCCESS - {project_count} projects'
+    except Exception as e:
+        debug_info['database_connection'] = f'FAILED - {str(e)}'
+
     return f"Debug info: {debug_info}"
 
 @app.route('/admin/users')
