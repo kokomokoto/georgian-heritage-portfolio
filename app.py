@@ -583,9 +583,11 @@ def allowed_file(filename):
 
 def load_projects():
     """Load projects from database primarily, JSON as fallback"""
+    print("DEBUG: load_projects called")
     try:
         # Load from database first (now that we're using PostgreSQL)
         # Sort by sort_order (ascending - lower numbers first), then by created_at (newest first)
+        print("DEBUG: Attempting to load from database")
         projects = Project.query.order_by(Project.sort_order.asc(), Project.created_at.desc()).all()
         result = []
         for project in projects:
@@ -622,19 +624,23 @@ def load_projects():
         return result
     except Exception as e:
         print(f"❌ Error loading projects from database: {e}")
+        print(f"❌ Database URL: {app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')}")
         import traceback
         traceback.print_exc()
-    
+
     # Fallback to JSON if database fails
     try:
+        print("DEBUG: Falling back to JSON")
         if os.path.exists(PROJECTS_JSON):
             with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
                 projects_data = json.load(f)
             print(f"✅ Loaded {len(projects_data)} projects from JSON (fallback)")
             return projects_data
+        else:
+            print(f"❌ projects.json does not exist at {PROJECTS_JSON}")
     except Exception as e:
         print(f"❌ Error loading projects from JSON: {e}")
-    
+
     return []
 
 def save_projects(projects):
