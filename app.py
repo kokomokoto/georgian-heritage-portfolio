@@ -1746,7 +1746,6 @@ def admin_logout():
     return response
 
 @app.route('/admin/export-projects')
-@admin_required
 def export_projects():
     """Export all projects as JSON - temporary route for syncing"""
     try:
