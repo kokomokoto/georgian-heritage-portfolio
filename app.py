@@ -584,6 +584,8 @@ def allowed_file(filename):
 def load_projects():
     """Load projects from database primarily, JSON as fallback"""
     print("DEBUG: load_projects called")
+    print(f"DEBUG: Environment DATABASE_URL: {os.environ.get('DATABASE_URL', 'NOT SET')}")
+    print(f"DEBUG: App config DATABASE_URL: {app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')}")
     try:
         # Load from database first (now that we're using PostgreSQL)
         # Sort by sort_order (ascending - lower numbers first), then by created_at (newest first)
