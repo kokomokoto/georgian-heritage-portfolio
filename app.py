@@ -1224,6 +1224,7 @@ def debug():
         'database_url_env': os.environ.get('DATABASE_URL', 'NOT SET'),
         'database_url_config': app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET'),
         'flask_env': os.environ.get('FLASK_ENV', 'NOT SET'),
+        'all_env_vars': {k: v[:50] + '...' if v and len(v) > 50 else v for k, v in os.environ.items() if not k.startswith('_')},
     }
 
     # Try to connect to database
