@@ -359,8 +359,8 @@ ANALYTICS_USERNAME = os.environ.get('ANALYTICS_USERNAME', 'kanalytics')
 ANALYTICS_PASSWORD = os.environ.get('ANALYTICS_PASSWORD', 'kanalytics2026')
 
 # Initialize database
-with app.app_context():
-    try:
+try:
+    with app.app_context():
         db.create_all()
         print("✅ Database initialized successfully")
         
@@ -373,6 +373,9 @@ with app.app_context():
         #         print("No projects found, seeding database...")
         #         with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
         #             projects_data = json.load(f)
+except Exception as e:
+    print(f"⚠️  Database initialization failed: {e}")
+    print("Continuing without database initialization...")
         #         for proj_data in projects_data:
         #             description = ""
         #             if proj_data.get('description_file'):
@@ -2497,8 +2500,15 @@ def live_search():
     return jsonify({'projects': result})
 
 # Create database tables if they don't exist
-with app.app_context():
-    db.create_all()
+try:
+    with app.app_context():
+        db.create_all()
+        print("✅ Database tables created successfully")
+    # Also ensure projects directory exists
+    os.makedirs(PROJECTS_DIR, exist_ok=True)
+except Exception as e:
+    print(f"⚠️  Database table creation failed: {e}")
+    print("Continuing without creating tables...")
     # Also ensure projects directory exists
     os.makedirs(PROJECTS_DIR, exist_ok=True)
 
