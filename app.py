@@ -296,7 +296,7 @@ elif os.environ.get('FLASK_ENV') == 'development':
 else:
     # TEMPORARY WORKAROUND: Hardcode production database URL
     # This should be removed once environment variables are properly set on Render
-    production_db_url = 'postgresql://portfolio_o9ri_user:XxtUHctEoEUoKjZ33Q3d@oregon-postgres.render.com/portfolio_o9ri'
+    production_db_url = 'postgresql://portfolio_o9ri_user:XxtUHctEoEUoKjZ33Q3d@oregon-postgres.render.com/portfolio_o9ri?sslmode=require'
     app.config['SQLALCHEMY_DATABASE_URI'] = production_db_url
     print(f"Using hardcoded production database URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
