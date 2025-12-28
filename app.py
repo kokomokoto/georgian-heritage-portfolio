@@ -2,7 +2,7 @@ import os
 import time
 import uuid
 import io
-from datetime import datetime
+from datetime import datetime, UTC
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
 from werkzeug.utils import secure_filename
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -284,7 +284,13 @@ else:
 
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your_secret_key_here'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///portfolio.db'
+# Database configuration
+if os.environ.get('FLASK_ENV') == 'development':
+    db_path = os.path.join(os.getcwd(), 'instance', 'portfolio_dev.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+else:
+    db_path = os.path.join(os.getcwd(), 'instance', 'portfolio.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
@@ -525,7 +531,7 @@ def track_user_visit(page_url=None, user_agent=None, screen_resolution=None, ref
             'page_url': page_url or (request.url if request else 'Unknown'),
             'screen_resolution': screen_resolution,
             'referrer': referrer or (request.referrer if request else None),
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
             'user_id': user_id,
             'action': 'page_view'  # Always set action
         }
@@ -549,8 +555,8 @@ def get_user_analytics(days=30):
     
     try:
         # Calculate the timestamp for N days ago
-        from datetime import datetime, timedelta
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        from datetime import timedelta
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
         cutoff_iso = cutoff_date.isoformat()
         print(f"Cutoff date: {cutoff_iso}")
         
@@ -1738,6 +1744,16 @@ def admin_logout():
     print(f"DEBUG: After logout - session: {dict(session)}")
     flash('თქვენ გახვედით ადმინ პანელიდან.', 'info')
     return response
+
+@app.route('/admin/export-projects')
+@admin_required
+def export_projects():
+    """Export all projects as JSON - temporary route for syncing"""
+    try:
+        projects = load_projects()
+        return jsonify(projects)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/debug/database')
 def debug_database():
