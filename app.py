@@ -364,6 +364,21 @@ try:
         db.create_all()
         print("✅ Database initialized successfully")
         
+        # Add missing columns for existing databases
+        try:
+            if 'postgresql' in str(db.engine.url).lower():
+                # For PostgreSQL, add columns if they don't exist
+                db.session.execute(db.text("ALTER TABLE project ADD COLUMN IF NOT EXISTS model_urls TEXT"))
+                db.session.commit()
+                print("✅ Database schema updated for PostgreSQL")
+            else:
+                # For SQLite, try to add column (won't error if exists)
+                db.session.execute(db.text("ALTER TABLE project ADD COLUMN model_urls TEXT"))
+                db.session.commit()
+                print("✅ Database schema updated for SQLite")
+        except Exception as e:
+            print(f"Schema update warning: {e}")
+        
         # Seed database with initial projects if empty
         # DISABLED: Data has been migrated via migration scripts
         print("Database seeding disabled - using migration scripts instead")
