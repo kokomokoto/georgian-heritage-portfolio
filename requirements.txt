@@ -1,6 +1,6 @@
 # Force redeploy
-Flask==3.0.0
-Werkzeug==3.0.0
+Flask==2.3.3
+Werkzeug==2.3.7
 gunicorn==21.2.0
 python-dotenv==1.0.0
 cloudinary==1.36.0
