@@ -43,3 +43,32 @@ Processing images
 Found 3 images
 Processing ZIP files for 3D models
 Project saved successfully to database
+Upload called - Method: GET, Content-Type: None
+Upload called - Method: GET, Content-Type: None
+Upload called - Method: GET, Content-Type: None
+Upload called - Method: POST, Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryBhbCju1M9wn4yaFF
+POST request received
+Form data - title: თბილისის ტელეანძა
+Starting image processing
+Processing images
+Found 1 images
+Processing ZIP files for 3D models
+Project saved successfully to database
+Upload called - Method: GET, Content-Type: None
+Upload called - Method: POST, Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryrh4j3WdyBRPfOXY9
+POST request received
+Form data - title: ქუთაისის ლადო მესხიშვილის დრამატული თეატრი
+Starting image processing
+Processing images
+Found 1 images
+Processing ZIP files for 3D models
+Project saved successfully to database
+Upload called - Method: GET, Content-Type: None
+Upload called - Method: POST, Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryKBKHHZxQLzyqTsMJ
+POST request received
+Form data - title: ქუთაისის ღვთისმშობლის ხარების ეკლესია
+Starting image processing
+Processing images
+Found 1 images
+Processing ZIP files for 3D models
+Project saved successfully to database
