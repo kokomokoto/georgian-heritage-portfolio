@@ -285,15 +285,20 @@ else:
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your_secret_key_here'
 # Database configuration
-database_url = os.environ.get('DATABASE_URL')
+database_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRESQL_DATABASE_URL') or os.environ.get('DB_CONNECTION_STRING')
 if database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print(f"Using database URL: {database_url[:50]}...")
 elif os.environ.get('FLASK_ENV') == 'development':
     db_path = os.path.join(os.getcwd(), 'instance', 'portfolio_dev.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    print(f"Using development database: {db_path}")
 else:
-    db_path = os.path.join(os.getcwd(), 'instance', 'portfolio.db')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    # TEMPORARY WORKAROUND: Hardcode production database URL
+    # This should be removed once environment variables are properly set on Render
+    production_db_url = 'postgresql://portfolio_o9ri_user:XxtUHctEoEUoKjZ33Q3d@oregon-postgres.render.com/portfolio_o9ri'
+    app.config['SQLALCHEMY_DATABASE_URI'] = production_db_url
+    print(f"Using hardcoded production database URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
@@ -1222,6 +1227,8 @@ def debug():
         'templates_exist': os.path.exists('templates'),
         'index_template_exists': os.path.exists('templates/index.html'),
         'database_url_env': os.environ.get('DATABASE_URL', 'NOT SET'),
+        'postgresql_database_url_env': os.environ.get('POSTGRESQL_DATABASE_URL', 'NOT SET'),
+        'db_connection_string_env': os.environ.get('DB_CONNECTION_STRING', 'NOT SET'),
         'database_url_config': app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET'),
         'flask_env': os.environ.get('FLASK_ENV', 'NOT SET'),
         'all_env_vars': {k: v[:50] + '...' if v and len(v) > 50 else v for k, v in os.environ.items() if not k.startswith('_')},
