@@ -572,7 +572,18 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def load_projects():
-    """Load projects from database"""
+    """Load projects from JSON primarily, database as fallback"""
+    try:
+        # Load from JSON first
+        if os.path.exists(PROJECTS_JSON):
+            with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
+                projects_data = json.load(f)
+            print(f"✅ Loaded {len(projects_data)} projects from JSON")
+            return projects_data
+    except Exception as e:
+        print(f"❌ Error loading projects from JSON: {e}")
+    
+    # Fallback to database
     try:
         # Sort by sort_order (ascending - lower numbers first), then by created_at (newest first)
         projects = Project.query.order_by(Project.sort_order.asc(), Project.created_at.desc()).all()
@@ -607,98 +618,93 @@ def load_projects():
                 'type_categories': json.loads(project.type_categories) if project.type_categories else [],
                 'period_categories': json.loads(project.period_categories) if project.period_categories else []
             })
+        print(f"✅ Loaded {len(result)} projects from database (fallback)")
         return result
     except Exception as e:
-        print(f"Error loading projects from database: {e}")
+        print(f"❌ Error loading projects from database: {e}")
         import traceback
         traceback.print_exc()
-        # Fallback to JSON if database fails
-        if os.path.exists(PROJECTS_JSON):
-            with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
-                return json.load(f)
         return []
 
 def save_projects(projects):
-    """Save projects to database"""
+    """Save projects to JSON primarily, database as backup"""
     print(f"DEBUG: save_projects called with {len(projects)} projects")
     try:
-        # Get existing project IDs
-        existing_ids = {p.id for p in Project.query.all()}
+        # Save to JSON first
+        with open(PROJECTS_JSON, 'w', encoding='utf-8') as f:
+            json.dump(projects, f, ensure_ascii=False, indent=2)
+        print(f"✅ Saved {len(projects)} projects to JSON")
+        
+        # Also save to database for compatibility
+        try:
+            # Get existing project IDs
+            existing_ids = {p.id for p in Project.query.all()}
 
-        # Track which projects we're updating/adding
-        updated_ids = set()
+            # Track which projects we're updating/adding
+            updated_ids = set()
 
-        for project_data in projects:
-            project_id = project_data['id']
-            updated_ids.add(project_id)
+            for project_data in projects:
+                project_id = project_data['id']
+                updated_ids.add(project_id)
 
-            # Check if project exists
-            existing_project = Project.query.get(project_id)
-            if existing_project:
-                # Update existing project
-                existing_project.title = project_data['title']
-                existing_project.main_image = project_data.get('main_image')
-                existing_project.main_image_caption = project_data.get('main_image_caption')
-                existing_project.other_images = json.dumps(project_data.get('other_images', []))
-                existing_project.viewer3D = project_data.get('viewer3D')
-                existing_project.description = project_data.get('description')
-                existing_project.description_file = project_data.get('description_file')
-                existing_project.folder = project_data.get('folder')
-                existing_project.latitude = project_data.get('latitude')
-                existing_project.longitude = project_data.get('longitude')
-                existing_project.sort_order = project_data.get('sort_order', 0)
-                existing_project.documents = json.dumps(project_data.get('documents', []))
-                existing_project.loading_video = project_data.get('loading_video')
-                existing_project.loading_audio = project_data.get('loading_audio')
-                existing_project.project_info = json.dumps(project_data.get('project_info', {}))
-                existing_project.type_categories = json.dumps(project_data.get('type_categories', []))
-                existing_project.period_categories = json.dumps(project_data.get('period_categories', []))
-            else:
-                # Create new project
-                project = Project(
-                    id=project_id,
-                    title=project_data['title'],
-                    main_image=project_data.get('main_image'),
-                    main_image_caption=project_data.get('main_image_caption'),
-                    other_images=json.dumps(project_data.get('other_images', [])),
-                    viewer3D=project_data.get('viewer3D'),
-                    description=project_data.get('description'),
-                    description_file=project_data.get('description_file'),
-                    folder=project_data.get('folder'),
-                    latitude=project_data.get('latitude'),
-                    longitude=project_data.get('longitude'),
-                    sort_order=project_data.get('sort_order', 0),
-                    documents=json.dumps(project_data.get('documents', [])),
-                    loading_video=project_data.get('loading_video'),
-                    loading_audio=project_data.get('loading_audio'),
-                    project_info=json.dumps(project_data.get('project_info', {})),
-                    type_categories=json.dumps(project_data.get('type_categories', [])),
-                    period_categories=json.dumps(project_data.get('period_categories', []))
-                )
-                db.session.add(project)
+                # Check if project exists
+                existing_project = Project.query.get(project_id)
+                if existing_project:
+                    # Update existing project
+                    existing_project.title = project_data['title']
+                    existing_project.main_image = project_data.get('main_image')
+                    existing_project.main_image_caption = project_data.get('main_image_caption')
+                    existing_project.other_images = json.dumps(project_data.get('other_images', []))
+                    existing_project.viewer3D = project_data.get('viewer3D')
+                    existing_project.description = project_data.get('description')
+                    existing_project.description_file = project_data.get('description_file')
+                    existing_project.folder = project_data.get('folder')
+                    existing_project.latitude = project_data.get('latitude')
+                    existing_project.longitude = project_data.get('longitude')
+                    existing_project.sort_order = project_data.get('sort_order', 0)
+                    existing_project.documents = json.dumps(project_data.get('documents', []))
+                    existing_project.loading_video = project_data.get('loading_video')
+                    existing_project.loading_audio = project_data.get('loading_audio')
+                    existing_project.project_info = json.dumps(project_data.get('project_info', {}))
+                    existing_project.type_categories = json.dumps(project_data.get('type_categories', []))
+                    existing_project.period_categories = json.dumps(project_data.get('period_categories', []))
+                else:
+                    # Create new project
+                    project = Project(
+                        id=project_id,
+                        title=project_data['title'],
+                        main_image=project_data.get('main_image'),
+                        main_image_caption=project_data.get('main_image_caption'),
+                        other_images=json.dumps(project_data.get('other_images', [])),
+                        viewer3D=project_data.get('viewer3D'),
+                        description=project_data.get('description'),
+                        description_file=project_data.get('description_file'),
+                        folder=project_data.get('folder'),
+                        latitude=project_data.get('latitude'),
+                        longitude=project_data.get('longitude'),
+                        sort_order=project_data.get('sort_order', 0),
+                        documents=json.dumps(project_data.get('documents', [])),
+                        loading_video=project_data.get('loading_video'),
+                        loading_audio=project_data.get('loading_audio'),
+                        project_info=json.dumps(project_data.get('project_info', {})),
+                        type_categories=json.dumps(project_data.get('type_categories', [])),
+                        period_categories=json.dumps(project_data.get('period_categories', []))
+                    )
+                    db.session.add(project)
 
-        # Remove projects that are no longer in the list
-        for old_id in existing_ids - updated_ids:
-            Project.query.filter_by(id=old_id).delete()
+            # Remove projects that are no longer in the list
+            for old_id in existing_ids - updated_ids:
+                Project.query.filter_by(id=old_id).delete()
 
-        db.session.commit()
-        print(f"✅ Saved {len(projects)} projects to database")
-        # Verify the save worked
-        verify_count = Project.query.count()
-        print(f"DEBUG: Verification - {verify_count} projects in database")
+            db.session.commit()
+            print(f"✅ Also saved {len(projects)} projects to database")
+        except Exception as db_error:
+            print(f"⚠️ Database save failed: {db_error}")
+            
     except Exception as e:
-        print(f"❌ Error saving projects to database: {e}")
+        print(f"❌ Error saving projects to JSON: {e}")
         import traceback
         traceback.print_exc()
-        db.session.rollback()
-        print("DEBUG: Database transaction rolled back")
-        # Fallback to JSON
-        try:
-            with open(PROJECTS_JSON, 'w', encoding='utf-8') as f:
-                json.dump(projects, f, ensure_ascii=False, indent=2)
-            print("💾 Saved to JSON as fallback")
-        except Exception as json_error:
-            print(f"❌ Failed to save to JSON: {json_error}")
 
 def load_comments():
     if os.path.exists(COMMENTS_JSON):
@@ -1744,6 +1750,15 @@ def admin_logout():
     print(f"DEBUG: After logout - session: {dict(session)}")
     flash('თქვენ გახვედით ადმინ პანელიდან.', 'info')
     return response
+
+@app.route('/export-comments')
+def export_comments_public():
+    """Export all comments as JSON - public route for syncing"""
+    try:
+        comments = load_comments()
+        return jsonify(comments)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/export-projects')
 def export_projects():
