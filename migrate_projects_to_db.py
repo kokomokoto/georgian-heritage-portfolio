@@ -11,13 +11,23 @@ from models import db, Project
 # Add the current directory to the path
 sys.path.insert(0, os.path.dirname(__file__))
 
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
 def migrate_projects_to_db():
     """Migrate projects from projects.json to database"""
 
     # Initialize Flask app
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///portfolio.db'
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///portfolio.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    print(f"Using database: {app.config['SQLALCHEMY_DATABASE_URI']}")
 
     db.init_app(app)
 

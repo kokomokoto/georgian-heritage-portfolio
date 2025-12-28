@@ -285,12 +285,15 @@ else:
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your_secret_key_here'
 # Database configuration
-if os.environ.get('FLASK_ENV') == 'development':
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+elif os.environ.get('FLASK_ENV') == 'development':
     db_path = os.path.join(os.getcwd(), 'instance', 'portfolio_dev.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 else:
     db_path = os.path.join(os.getcwd(), 'instance', 'portfolio.db')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or f'sqlite:///{db_path}'
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
@@ -357,41 +360,48 @@ with app.app_context():
         print("✅ Database initialized successfully")
         
         # Seed database with initial projects if empty
-        if Project.query.count() == 0:
-            try:
-                with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
-                    projects_data = json.load(f)
-                for proj_data in projects_data:
-                    description = ""
-                    if proj_data.get('description_file'):
-                        desc_path = os.path.join(PROJECTS_DIR, proj_data['folder'], proj_data['description_file'])
-                        if os.path.exists(desc_path):
-                            with open(desc_path, 'r', encoding='utf-8') as df:
-                                description = df.read()
-                    project = Project(
-                        id=proj_data['id'],
-                        title=proj_data['title'],
-                        main_image=proj_data.get('main_image'),
-                        other_images=json.dumps(proj_data.get('other_images', [])),
-                        viewer3D=proj_data.get('viewer3D'),
-                        description=description,
-                        description_file=proj_data.get('description_file'),
-                        folder=proj_data.get('folder'),
-                        latitude=proj_data.get('latitude'),
-                        longitude=proj_data.get('longitude'),
-                        documents=json.dumps(proj_data.get('documents', [])),
-                        loading_video=proj_data.get('loading_video'),
-                        loading_audio=proj_data.get('loading_audio'),
-                        project_info=json.dumps(proj_data.get('project_info', {})),
-                        type_categories=json.dumps(proj_data.get('type_categories', [])),
-                        period_categories=json.dumps(proj_data.get('period_categories', [])),
-                        sort_order=0  # Default sort order
-                    )
-                    db.session.add(project)
-                db.session.commit()
-                print("✅ Seeded database with initial projects")
-            except Exception as e:
-                print(f"⚠️ Could not seed database: {e}")
+        # DISABLED: Data has been migrated via migration scripts
+        # try:
+        #     # Check if any projects exist by trying to get the first one
+        #     existing_project = Project.query.first()
+        #     if existing_project is None:
+        #         print("No projects found, seeding database...")
+        #         with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
+        #             projects_data = json.load(f)
+        #         for proj_data in projects_data:
+        #             description = ""
+        #             if proj_data.get('description_file'):
+        #                 desc_path = os.path.join(PROJECTS_DIR, proj_data['folder'], proj_data['description_file'])
+        #                 if os.path.exists(desc_path):
+        #                     with open(desc_path, 'r', encoding='utf-8') as df:
+        #                         description = df.read()
+        #             project = Project(
+        #                 id=proj_data['id'],
+        #                 title=proj_data['title'],
+        #                 main_image=proj_data.get('main_image'),
+        #                 other_images=json.dumps(proj_data.get('other_images', [])),
+        #                 viewer3D=proj_data.get('viewer3D'),
+        #                 description=description,
+        #                 description_file=proj_data.get('description_file'),
+        #                 folder=proj_data.get('folder'),
+        #                 latitude=proj_data.get('latitude'),
+        #                 longitude=proj_data.get('longitude'),
+        #                 documents=json.dumps(proj_data.get('documents', [])),
+        #                 loading_video=proj_data.get('loading_video'),
+        #                 loading_audio=proj_data.get('loading_audio'),
+        #                 project_info=json.dumps(proj_data.get('project_info', {})),
+        #                 type_categories=json.dumps(proj_data.get('type_categories', [])),
+        #                 period_categories=json.dumps(proj_data.get('period_categories', [])),
+        #                 sort_order=0  # Default sort order
+        #             )
+        #             db.session.add(project)
+        #         db.session.commit()
+        #         print("✅ Seeded database with initial projects")
+        #     else:
+        #         print("Projects already exist in database, skipping seeding")
+        # except Exception as e:
+        #     print(f"⚠️ Could not seed database: {e}")
+        #     # Don't crash the app
     except Exception as e:
         print(f"⚠️ Database initialization error: {e}")
         # Continue anyway - don't crash the app
@@ -572,19 +582,9 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def load_projects():
-    """Load projects from JSON primarily, database as fallback"""
+    """Load projects from database primarily, JSON as fallback"""
     try:
-        # Load from JSON first
-        if os.path.exists(PROJECTS_JSON):
-            with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
-                projects_data = json.load(f)
-            print(f"✅ Loaded {len(projects_data)} projects from JSON")
-            return projects_data
-    except Exception as e:
-        print(f"❌ Error loading projects from JSON: {e}")
-    
-    # Fallback to database
-    try:
+        # Load from database first (now that we're using PostgreSQL)
         # Sort by sort_order (ascending - lower numbers first), then by created_at (newest first)
         projects = Project.query.order_by(Project.sort_order.asc(), Project.created_at.desc()).all()
         result = []
@@ -618,13 +618,24 @@ def load_projects():
                 'type_categories': json.loads(project.type_categories) if project.type_categories else [],
                 'period_categories': json.loads(project.period_categories) if project.period_categories else []
             })
-        print(f"✅ Loaded {len(result)} projects from database (fallback)")
+        print(f"✅ Loaded {len(result)} projects from database")
         return result
     except Exception as e:
         print(f"❌ Error loading projects from database: {e}")
         import traceback
         traceback.print_exc()
-        return []
+    
+    # Fallback to JSON if database fails
+    try:
+        if os.path.exists(PROJECTS_JSON):
+            with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
+                projects_data = json.load(f)
+            print(f"✅ Loaded {len(projects_data)} projects from JSON (fallback)")
+            return projects_data
+    except Exception as e:
+        print(f"❌ Error loading projects from JSON: {e}")
+    
+    return []
 
 def save_projects(projects):
     """Save projects to JSON primarily, database as backup"""

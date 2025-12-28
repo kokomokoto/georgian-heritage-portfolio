@@ -7,3 +7,39 @@ Processing images
 Found 2 images
 Processing ZIP files for 3D models
 Project saved successfully to database
+Upload called - Method: GET, Content-Type: None
+Upload called - Method: POST, Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryhDYsKQzUphYKKMBA
+POST request received
+Form data - title: გამარჯვების ქანდაკება
+Starting image processing
+Processing images
+Found 1 images
+Processing ZIP files for 3D models
+Project saved successfully to database
+Upload called - Method: GET, Content-Type: None
+Upload called - Method: POST, Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryg0EA9Hue6shX8typ
+POST request received
+Form data - title: გორის ციხე
+Starting image processing
+Processing images
+Found 8 images
+Processing ZIP files for 3D models
+Project saved successfully to database
+Upload called - Method: GET, Content-Type: None
+Upload called - Method: POST, Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryeoD99L1Ni1H5UFH5
+POST request received
+Form data - title: ბაგრატის ტაძარი
+Starting image processing
+Processing images
+Found 7 images
+Processing ZIP files for 3D models
+Project saved successfully to database
+Upload called - Method: GET, Content-Type: None
+Upload called - Method: POST, Content-Type: multipart/form-data; boundary=----WebKitFormBoundary6B13ENjEwWnmXHCc
+POST request received
+Form data - title: მოწამეთას მონასტერი
+Starting image processing
+Processing images
+Found 3 images
+Processing ZIP files for 3D models
+Project saved successfully to database
