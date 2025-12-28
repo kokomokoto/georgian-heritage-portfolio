@@ -366,53 +366,10 @@ try:
         
         # Seed database with initial projects if empty
         # DISABLED: Data has been migrated via migration scripts
-        # try:
-        #     # Check if any projects exist by trying to get the first one
-        #     existing_project = Project.query.first()
-        #     if existing_project is None:
-        #         print("No projects found, seeding database...")
-        #         with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
-        #             projects_data = json.load(f)
+        print("Database seeding disabled - using migration scripts instead")
 except Exception as e:
-    print(f"⚠️  Database initialization failed: {e}")
-    print("Continuing without database initialization...")
-        #         for proj_data in projects_data:
-        #             description = ""
-        #             if proj_data.get('description_file'):
-        #                 desc_path = os.path.join(PROJECTS_DIR, proj_data['folder'], proj_data['description_file'])
-        #                 if os.path.exists(desc_path):
-        #                     with open(desc_path, 'r', encoding='utf-8') as df:
-        #                         description = df.read()
-        #             project = Project(
-        #                 id=proj_data['id'],
-        #                 title=proj_data['title'],
-        #                 main_image=proj_data.get('main_image'),
-        #                 other_images=json.dumps(proj_data.get('other_images', [])),
-        #                 viewer3D=proj_data.get('viewer3D'),
-        #                 description=description,
-        #                 description_file=proj_data.get('description_file'),
-        #                 folder=proj_data.get('folder'),
-        #                 latitude=proj_data.get('latitude'),
-        #                 longitude=proj_data.get('longitude'),
-        #                 documents=json.dumps(proj_data.get('documents', [])),
-        #                 loading_video=proj_data.get('loading_video'),
-        #                 loading_audio=proj_data.get('loading_audio'),
-        #                 project_info=json.dumps(proj_data.get('project_info', {})),
-        #                 type_categories=json.dumps(proj_data.get('type_categories', [])),
-        #                 period_categories=json.dumps(proj_data.get('period_categories', [])),
-        #                 sort_order=0  # Default sort order
-        #             )
-        #             db.session.add(project)
-        #         db.session.commit()
-        #         print("✅ Seeded database with initial projects")
-        #     else:
-        #         print("Projects already exist in database, skipping seeding")
-        # except Exception as e:
-        #     print(f"⚠️ Could not seed database: {e}")
-        #     # Don't crash the app
-    except Exception as e:
-        print(f"⚠️ Database initialization error: {e}")
-        # Continue anyway - don't crash the app
+    print(f"⚠️ Database initialization error: {e}")
+    # Continue anyway - don't crash the app
 
 # Login Manager
 login_manager = LoginManager()
