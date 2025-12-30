@@ -140,3 +140,14 @@ class Project(db.Model):
 
     def __repr__(self):
         return f'<Project {self.title}>'
+
+
+class SiteSetting(db.Model):
+    __tablename__ = 'site_settings'
+
+    key = db.Column(db.String(100), primary_key=True)
+    value = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<SiteSetting {self.key}>'

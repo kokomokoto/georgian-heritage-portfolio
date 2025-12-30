@@ -287,9 +287,13 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your_secret_key_here
 # Database configuration - ALWAYS REQUIRE DATABASE_URL
 database_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRESQL_DATABASE_URL') or os.environ.get('DB_CONNECTION_STRING')
 if database_url:
-    # Use psycopg2cffi for Python 3.13 compatibility
+    # Use pg8000 for Python 3.13 compatibility (pure Python driver)
     if database_url.startswith('postgresql://'):
-        database_url = database_url.replace('postgresql://', 'postgresql+psycopg2cffi://', 1)
+        database_url = database_url.replace('postgresql://', 'postgresql+pg8000://', 1)
+    elif database_url.startswith('postgresql+psycopg2cffi://'):
+        database_url = database_url.replace('postgresql+psycopg2cffi://', 'postgresql+pg8000://', 1)
+    elif database_url.startswith('postgresql+psycopg2://'):
+        database_url = database_url.replace('postgresql+psycopg2://', 'postgresql+pg8000://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     print(f"Using database URL: {database_url[:50]}...")
 else:
@@ -326,7 +330,7 @@ app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') or 'your_app_passw
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME') or 'your_email@gmail.com'
 
 # Import models after app creation
-from models import db, User, Comment, Like, Project
+from models import db, User, Comment, Like, Project, SiteSetting
 from forms import RegistrationForm, LoginForm, ForgotPasswordForm, ResetPasswordForm
 
 # Add CORS headers for API endpoints
@@ -549,23 +553,22 @@ def allowed_file(filename):
 
 def load_projects():
     """Load projects from database primarily, JSON as fallback"""
-    print("DEBUG: load_projects called")
-    print(f"DEBUG: Environment DATABASE_URL: {os.environ.get('DATABASE_URL', 'NOT SET')}")
-    print(f"DEBUG: App config DATABASE_URL: {app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')}")
+    debug_projects = os.environ.get('DEBUG_PROJECTS', '').lower() in {'1', 'true', 'yes', 'on'}
+    if debug_projects:
+        print("DEBUG: load_projects called")
+        print(f"DEBUG: Environment DATABASE_URL: {os.environ.get('DATABASE_URL', 'NOT SET')}")
+        print(f"DEBUG: App config DATABASE_URL: {app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')}")
     try:
         # Load from database first (now that we're using PostgreSQL)
         # Sort by sort_order (ascending - lower numbers first), then by created_at (newest first)
-        print("DEBUG: Attempting to load from database")
+        if debug_projects:
+            print("DEBUG: Attempting to load from database")
         projects = Project.query.order_by(Project.sort_order.asc(), Project.created_at.desc()).all()
         result = []
         for project in projects:
-            # Load description from file if not in database
+            # IMPORTANT: avoid filesystem reads during index listing (Render filesystem is slow/ephemeral)
+            # Keep description strictly from DB here.
             description = project.description
-            if not description and project.description_file:
-                desc_path = os.path.join('projects', project.folder, 'description.txt')
-                if os.path.exists(desc_path):
-                    with open(desc_path, 'r', encoding='utf-8') as f:
-                        description = clean_description(f.read())
             
             result.append({
                 'id': project.id,
@@ -599,6 +602,23 @@ def load_projects():
         print("❌ CRITICAL: Cannot load projects without database connection!")
         print("   Make sure DATABASE_URL is set correctly")
         return []
+
+
+# Simple in-process cache for the list page to reduce cold-start latency.
+# (On Render multiple instances may exist; this is best-effort only.)
+_projects_cache = {"value": None, "expires_at": 0.0}
+
+
+def get_cached_projects(ttl_seconds: int = 30):
+    now = time.time()
+    cached_value = _projects_cache.get("value")
+    if cached_value is not None and now < _projects_cache.get("expires_at", 0.0):
+        return cached_value
+
+    value = load_projects()
+    _projects_cache["value"] = value
+    _projects_cache["expires_at"] = now + max(1, int(ttl_seconds))
+    return value
 
 def save_projects(projects):
     """Save projects to JSON primarily, database as backup"""
@@ -705,6 +725,28 @@ def analytics_required(f):
             return redirect(url_for('analytics_login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def get_site_setting(key, default=None):
+    try:
+        row = SiteSetting.query.get(key)
+        return row.value if row and row.value is not None else default
+    except Exception as e:
+        print(f"Failed to read site setting {key}: {e}")
+        return default
+
+
+def set_site_setting(key, value):
+    row = SiteSetting.query.get(key)
+    if row is None:
+        row = SiteSetting(key=key, value=value)
+        db.session.add(row)
+    else:
+        row.value = value
+    db.session.commit()
+
+
+HOME_3D_VIEWER_SETTING_KEY = 'home_3d_viewer'
 
 # Routes
 
@@ -1158,10 +1200,11 @@ def analytics_logout():
 def index():
     try:
         q = request.args.get('q', '').lower()
-        projects = load_projects()
+        projects = get_cached_projects(ttl_seconds=int(os.environ.get('PROJECTS_CACHE_TTL', '30')))
         if q:
             projects = [p for p in projects if q in p['title'].lower()]
-        return render_template('index.html', projects=projects, q=q)
+        home_3d_viewer = get_site_setting(HOME_3D_VIEWER_SETTING_KEY, default='')
+        return render_template('index.html', projects=projects, q=q, home_3d_viewer=home_3d_viewer)
     except Exception as e:
         # For debugging on Render
         return f"Error in index route: {str(e)}", 500
@@ -1726,7 +1769,27 @@ def debug_session():
 @admin_required
 def admin_panel():
     projects = load_projects()
-    return render_template('admin_panel.html', projects=projects)
+    home_3d_viewer = get_site_setting(HOME_3D_VIEWER_SETTING_KEY, default='')
+    return render_template('admin_panel.html', projects=projects, home_3d_viewer=home_3d_viewer)
+
+
+@app.route('/admin/site-settings/home-3d-viewer', methods=['POST'])
+@admin_required
+def admin_set_home_3d_viewer():
+    try:
+        raw_value = request.form.get('home_3d_viewer', '')
+        value = raw_value.strip() if raw_value else ''
+        if value == '':
+            set_site_setting(HOME_3D_VIEWER_SETTING_KEY, None)
+            flash('Home 3D Viewer გამორთულია (ლინკი გასუფთავდა).', 'success')
+        else:
+            set_site_setting(HOME_3D_VIEWER_SETTING_KEY, value)
+            flash('Home 3D Viewer ლინკი განახლდა.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error saving site setting: {e}")
+        flash('ვერ შევინახე Home 3D Viewer ლინკი.', 'error')
+    return redirect(url_for('admin_panel'))
 
 @app.route('/admin/logout')
 def admin_logout():
@@ -2013,37 +2076,27 @@ def upload_project():
     print("DEBUG: Content-Type:", request.content_type)
     print("DEBUG: Content-Length:", request.content_length)
     
-    # Log to file for debugging
-    with open('upload_debug.log', 'a', encoding='utf-8') as f:
-        f.write(f"Upload called - Method: {request.method}, Content-Type: {request.content_type}\n")
+    # IMPORTANT: Don't write debug logs to local files on Render (ephemeral / may fail).
+    # Use stdout (print) which shows up in Render logs.
+    print(f"UPLOAD: called; method={request.method}; content_type={request.content_type}; content_length={request.content_length}")
     
     if request.method == 'POST':
         print("DEBUG: POST request received")
-        with open('upload_debug.log', 'a', encoding='utf-8') as f:
-            f.write("POST request received\n")
         try:
             title = request.form['title']
             description = request.form['description']
             viewer3d = request.form['viewer3d']
             print(f"DEBUG: Form data received - title: {title}")
-            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                f.write(f"Form data - title: {title}\n")
                 
             # Continue with processing
             print("DEBUG: Starting image processing")
-            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                f.write("Starting image processing\n")
                 
         except KeyError as e:
             print(f"DEBUG: Missing form field: {e}")
-            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                f.write(f"Missing form field: {e}\n")
             flash('ფორმის მონაცემები არასწორია.', 'error')
             return redirect(url_for('upload_project'))
         except Exception as e:
             print(f"DEBUG: Unexpected error in form processing: {e}")
-            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                f.write(f"Unexpected error in form processing: {e}\n")
             flash('შეცდომა ფორმის დამუშავებისას.', 'error')
             return redirect(url_for('upload_project'))
         loading_video = request.form.get('loading_video', '')
@@ -2056,8 +2109,6 @@ def upload_project():
         selected_main = request.form.get('main_image_selector', '0')  # Default to first image
         
         print("DEBUG: Processing images")
-        with open('upload_debug.log', 'a', encoding='utf-8') as f:
-            f.write("Processing images\n")
             
         # Collect all images
         i = 0
@@ -2080,8 +2131,6 @@ def upload_project():
             i += 1
         
         print(f"DEBUG: Found {len(all_images)} images")
-        with open('upload_debug.log', 'a', encoding='utf-8') as f:
-            f.write(f"Found {len(all_images)} images\n")
         
         # If no main image selected, use first image
         if not main_image_url and all_images:
@@ -2105,13 +2154,9 @@ def upload_project():
             project_id = f"project_{int(time.time())}"
             print(f"DEBUG: Using timestamp-based project_id: '{project_id}'")
         
-        project_path = os.path.join(PROJECTS_DIR, project_id)
-        print(f"DEBUG: Project path: {project_path}")
-        os.makedirs(project_path, exist_ok=True)
-        
-        # Save description
-        with open(os.path.join(project_path, 'description.txt'), 'w', encoding='utf-8') as f:
-            f.write(description)
+        # IMPORTANT: Don't create/write local project folders on Render.
+        # Store description in DB only; media files go to Cloudinary/R2.
+        print("DEBUG: Skipping local project folder writes; using DB/cloud storage")
         
         # Save project directly to database
         latitude = request.form.get('latitude', '').strip()
@@ -2192,15 +2237,11 @@ def upload_project():
             zip_files = request.files.getlist('zip_files')
             if zip_files:
                 print("DEBUG: Processing ZIP files for 3D models")
-                with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                    f.write("Processing ZIP files for 3D models\n")
                 
                 for zip_file in zip_files:
                     if zip_file and zip_file.filename:
                         try:
                             print(f"DEBUG: Processing ZIP file: {zip_file.filename}")
-                            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                                f.write(f"Processing ZIP file: {zip_file.filename}\n")
                             
                             # Process ZIP file and upload to R2
                             viewer3d_url = process_zip_for_3d_viewer(zip_file, project_id)
@@ -2211,20 +2252,14 @@ def upload_project():
                                 else:
                                     new_project.viewer3D = viewer3d_url
                                 print(f"DEBUG: Updated viewer3D URL: {viewer3d_url}")
-                                with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                                    f.write(f"Updated viewer3D URL: {viewer3d_url}\n")
                                 flash(f'3D მოდელი წარმატებით აიტვირთა: {zip_file.filename}', 'success')
                             else:
                                 flash(f'3D ZIP ფაილის დამუშავება ვერ მოხერხდა: {zip_file.filename}. შეამოწმეთ რომ ფაილში არის HTML ფაილი.', 'error')
                         except Exception as e:
                             print(f"DEBUG: Error processing ZIP file {zip_file.filename}: {e}")
-                            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                                f.write(f"Error processing ZIP file {zip_file.filename}: {e}\n")
                             flash(f'ZIP ფაილის დამუშავება ვერ მოხერხდა: {zip_file.filename}', 'error')
         except Exception as e:
             print(f"DEBUG: Error in ZIP processing block: {e}")
-            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                f.write(f"Error in ZIP processing block: {e}\n")
             flash('შეცდომა ZIP ფაილების დამუშავებისას.', 'error')
         
         # Handle file uploads to Cloudinary
@@ -2365,22 +2400,20 @@ def upload_project():
                 flash(f'ატვირთულია {len(uploaded_urls)} ფაილი Cloudinary-ზე!', 'success')
         except Exception as e:
             print(f"DEBUG: Error in file upload block: {e}")
-            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                f.write(f"Error in file upload block: {e}\n")
+            import traceback
+            traceback.print_exc()
             flash('შეცდომა ფაილების ატვირთვისას.', 'error')
         
         # Commit the project to database (moved outside the file upload exception handler)
         try:
             db.session.commit()
             print("DEBUG: Project saved successfully to database")
-            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                f.write("Project saved successfully to database\n")
             flash('პროექტი წარმატებით შეინახა!', 'success')
         except Exception as e:
             print(f"DEBUG: Error saving project to database: {e}")
             db.session.rollback()
-            with open('upload_debug.log', 'a', encoding='utf-8') as f:
-                f.write(f"Error saving project to database: {e}\n")
+            import traceback
+            traceback.print_exc()
             flash('შეცდომა პროექტის შენახვისას.', 'error')
             return redirect(url_for('upload_project'))
         return redirect(url_for('admin_panel'))

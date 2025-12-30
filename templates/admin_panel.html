@@ -24,6 +24,24 @@
         <a href="/admin/comments" class="btn btn-warning">💬 კომენტარების მართვა</a>
         <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary">გასვლა</a>
     </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>მთავარი გვერდი — 3D Viewer (Global)</strong>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('admin_set_home_3d_viewer') }}">
+                <div class="mb-3">
+                    <label for="home_3d_viewer" class="form-label">3D viewer ლინკი ან embed HTML</label>
+                    <textarea class="form-control" id="home_3d_viewer" name="home_3d_viewer" rows="4" placeholder="მაგ: https://... ან <iframe ...></iframe>">{{ home_3d_viewer|default('') }}</textarea>
+                    <div class="form-text">
+                        დატოვეთ ცარიელი და შეინახეთ, რომ გამორთოთ Homepage 3D viewer.
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">შენახვა</button>
+            </form>
+        </div>
+    </div>
     <table class="table table-bordered">
     <thead><tr><th>სათაური</th><th>მთავარი ფოტო</th><th>კატეგორიები</th><th>რიგი</th><th>Latitude</th><th>Longitude</th><th>ქმედება</th></tr></thead>
         <tbody>

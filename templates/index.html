@@ -1,6 +1,38 @@
 {% extends 'base.html' %}
 {% block title %}Georgian Heritage Projects - DEBUG VERSION{% endblock %}
 
+{% block head %}
+<style>
+    .viewer-wrap{margin-bottom:20px;}
+    .viewer-iframe {
+        width: 100%;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    @media (min-width: 768px) {
+        .viewer-iframe {
+            height: 60vh;
+            min-height: 400px;
+            max-height: 600px;
+        }
+    }
+    @media (max-width: 767px) {
+        .viewer-iframe {
+            height: 50vh;
+            min-height: 300px;
+            max-height: 400px;
+        }
+    }
+    @media (min-width: 1200px) {
+        .viewer-iframe {
+            height: 65vh;
+            max-height: 700px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block filter_button %}
 <a href="#" class="btn btn-outline-light" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterSidepanel" aria-controls="filterSidepanel">
     <i class="bi bi-funnel" style="font-size: 1rem;"></i> FILTERS
@@ -81,9 +113,25 @@
 {% endblock %}
 
 {% block content %}
+    <!-- Home 3D Viewer (global setting from admin panel) -->
+    {% if home_3d_viewer %}
+    <div class="container mb-4" style="margin-top: 40px;">
+        <div class="viewer-wrap">
+            {% if home_3d_viewer.startswith('<') %}
+                {{ home_3d_viewer|safe }}
+            {% else %}
+                <iframe src="{{ home_3d_viewer }}" class="viewer-iframe"
+                        allowfullscreen webkitallowfullscreen mozallowfullscreen
+                        allow="xr-spatial-tracking; gyroscope; accelerometer">
+                </iframe>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Projects Map -->
     <div class="container mb-4">
-        <div id="map" style="height: 350px; width: 100%; border-radius: 10px; margin-bottom: 20px; margin-top: 40px;"></div>
+        <div id="map" style="height: 350px; width: 100%; border-radius: 10px; margin-bottom: 20px;"></div>
     </div>
     
     <div id="projectsData" style="display:none;">{{ projects|tojson|safe }}</div>
