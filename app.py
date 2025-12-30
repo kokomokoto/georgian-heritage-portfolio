@@ -284,7 +284,7 @@ else:
 
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your_secret_key_here'
-# Database configuration
+# Database configuration - ALWAYS REQUIRE DATABASE_URL
 database_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRESQL_DATABASE_URL') or os.environ.get('DB_CONNECTION_STRING')
 if database_url:
     # Use psycopg2cffi for Python 3.13 compatibility
@@ -292,16 +292,12 @@ if database_url:
         database_url = database_url.replace('postgresql://', 'postgresql+psycopg2cffi://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     print(f"Using database URL: {database_url[:50]}...")
-elif os.environ.get('FLASK_ENV') == 'development':
-    db_path = os.path.join(os.getcwd(), 'instance', 'portfolio_dev.db')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-    print(f"Using development database: {db_path}")
 else:
-    # CRITICAL SECURITY: Never hardcode database credentials!
-    # Database URL must be set via DATABASE_URL environment variable
+    # NO FALLBACK - Database connection is required
     print("❌ ERROR: DATABASE_URL environment variable not set!")
-    print("   Please set DATABASE_URL in your environment variables or Render dashboard")
-    raise RuntimeError("DATABASE_URL environment variable is required for production")
+    print("   Projects are stored in the online database only.")
+    print("   Set DATABASE_URL in environment variables or Render dashboard")
+    raise RuntimeError("DATABASE_URL environment variable is required")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
@@ -366,24 +362,11 @@ try:
     with app.app_context():
         db.create_all()
         print("✅ Database initialized successfully")
-        
-        # Add missing columns for existing databases
-        try:
-            if 'postgresql' in str(db.engine.url).lower():
-                # For PostgreSQL, add columns if they don't exist
-                db.session.execute(db.text("ALTER TABLE project ADD COLUMN IF NOT EXISTS model_urls TEXT"))
-                db.session.commit()
-                print("✅ Database schema updated for PostgreSQL")
-            else:
-                # For SQLite, try to add column (won't error if exists)
-                db.session.execute(db.text("ALTER TABLE project ADD COLUMN model_urls TEXT"))
-                db.session.commit()
-                print("✅ Database schema updated for SQLite")
-        except Exception as e:
-            print(f"Schema update warning: {e}")
-        
-        # Seed database with initial projects if empty
-        # DISABLED: Data has been migrated via migration scripts
+
+        # DISABLED: Schema updates - database should have correct schema from migrations
+        print("Database schema updates disabled - using existing schema")
+
+        # DISABLED: Database seeding - data has been migrated via migration scripts
         print("Database seeding disabled - using migration scripts instead")
 except Exception as e:
     print(f"⚠️ Database initialization error: {e}")
@@ -612,21 +595,10 @@ def load_projects():
         print(f"❌ Database URL: {app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')}")
         import traceback
         traceback.print_exc()
-
-    # Fallback to JSON if database fails
-    try:
-        print("DEBUG: Falling back to JSON")
-        if os.path.exists(PROJECTS_JSON):
-            with open(PROJECTS_JSON, 'r', encoding='utf-8') as f:
-                projects_data = json.load(f)
-            print(f"✅ Loaded {len(projects_data)} projects from JSON (fallback)")
-            return projects_data
-        else:
-            print(f"❌ projects.json does not exist at {PROJECTS_JSON}")
-    except Exception as e:
-        print(f"❌ Error loading projects from JSON: {e}")
-
-    return []
+        # NO FALLBACK - Projects must be in the database
+        print("❌ CRITICAL: Cannot load projects without database connection!")
+        print("   Make sure DATABASE_URL is set correctly")
+        return []
 
 def save_projects(projects):
     """Save projects to JSON primarily, database as backup"""
