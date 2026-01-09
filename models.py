@@ -151,3 +151,45 @@ class SiteSetting(db.Model):
 
     def __repr__(self):
         return f'<SiteSetting {self.key}>'
+
+
+class VisitEvent(db.Model):
+    __tablename__ = 'visit_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True, nullable=False)
+
+    session_id = db.Column(db.String(100), index=True, nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), index=True, nullable=True)
+
+    ip_address = db.Column(db.String(64), index=True, nullable=True)
+    user_agent = db.Column(db.Text, nullable=True)
+    page_url = db.Column(db.Text, nullable=True)
+    referrer = db.Column(db.Text, nullable=True)
+    screen_resolution = db.Column(db.String(32), nullable=True)
+
+    action = db.Column(db.String(50), index=True, nullable=False, default='page_view')
+    project_id = db.Column(db.String(50), index=True, nullable=True)
+
+    def to_dict(self):
+        ts = self.timestamp
+        try:
+            # If naive, treat as UTC for display
+            if ts and ts.tzinfo is None:
+                from datetime import UTC
+                ts = ts.replace(tzinfo=UTC)
+        except Exception:
+            pass
+
+        return {
+            'timestamp': ts.isoformat() if ts else None,
+            'session_id': self.session_id,
+            'user_id': self.user_id,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent,
+            'page_url': self.page_url,
+            'referrer': self.referrer,
+            'screen_resolution': self.screen_resolution,
+            'action': self.action,
+            'project_id': self.project_id,
+        }

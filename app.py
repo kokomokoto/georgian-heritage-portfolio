@@ -284,6 +284,16 @@ else:
 
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'your_secret_key_here'
+
+# Google Analytics 4 (optional)
+app.config['GA_MEASUREMENT_ID'] = (os.environ.get('GA_MEASUREMENT_ID') or '').strip()
+
+@app.context_processor
+def inject_global_settings():
+    return {
+        'ga_measurement_id': app.config.get('GA_MEASUREMENT_ID', '')
+    }
+
 # Database configuration - ALWAYS REQUIRE DATABASE_URL
 database_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRESQL_DATABASE_URL') or os.environ.get('DB_CONNECTION_STRING')
 if database_url:
@@ -330,7 +340,7 @@ app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') or 'your_app_passw
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME') or 'your_email@gmail.com'
 
 # Import models after app creation
-from models import db, User, Comment, Like, Project, SiteSetting
+from models import db, User, Comment, Like, Project, SiteSetting, VisitEvent
 from forms import RegistrationForm, LoginForm, ForgotPasswordForm, ResetPasswordForm
 
 # Add CORS headers for API endpoints
@@ -464,11 +474,15 @@ def get_client_ip():
         ip = request.remote_addr
     return ip
 
-def track_user_visit(page_url=None, user_agent=None, screen_resolution=None, referrer=None):
-    """Track user visit and store in Supabase"""
-    if not supabase:
-        return False
-    
+def track_user_visit(page_url=None, user_agent=None, screen_resolution=None, referrer=None, action=None, project_id=None):
+    """Track user visit.
+
+    Primary storage: app database (PostgreSQL on Render).
+    Optional secondary storage: Supabase (if configured).
+    """
+    db_ok = False
+    supabase_ok = False
+
     try:
         # Get user data
         ip_address = get_client_ip()
@@ -503,50 +517,125 @@ def track_user_visit(page_url=None, user_agent=None, screen_resolution=None, ref
             # Outside request context
             pass
         
-        # Prepare data for Supabase
-        visit_data = {
-            'session_id': session_id,
-            'ip_address': ip_address,
-            'user_agent': user_agent or (request.headers.get('User-Agent') if request else 'Unknown'),
-            'page_url': page_url or (request.url if request else 'Unknown'),
-            'screen_resolution': screen_resolution,
-            'referrer': referrer or (request.referrer if request else None),
-            'timestamp': datetime.now(UTC).isoformat(),
-            'user_id': user_id,
-            'action': 'page_view'  # Always set action
-        }
-        
-        # Insert into Supabase
-        result = supabase.table('user_visits').insert(visit_data).execute()
-        return True
+        resolved_user_agent = user_agent or (request.headers.get('User-Agent') if request else 'Unknown')
+        resolved_page_url = page_url or (request.url if request else 'Unknown')
+        resolved_referrer = referrer or (request.referrer if request else None)
+        resolved_action = (action or 'page_view')
+
+        # Store in main database
+        def _store_visit_in_db() -> None:
+            nonlocal db_ok
+            evt = VisitEvent(
+                session_id=session_id,
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=resolved_user_agent,
+                page_url=resolved_page_url,
+                referrer=resolved_referrer,
+                screen_resolution=screen_resolution,
+                action=resolved_action,
+                project_id=str(project_id) if project_id not in (None, '') else None,
+            )
+            db.session.add(evt)
+            db.session.commit()
+            db_ok = True
+
+        try:
+            _store_visit_in_db()
+        except Exception as db_err:
+            err_text = str(db_err)
+            print(f"Failed to store visit in DB: {db_err}")
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+            # If the new table isn't present yet (common right after deploy), create missing tables and retry once.
+            missing_table_markers = (
+                'visit_events',
+                'does not exist',
+                'UndefinedTable',
+                'no such table'
+            )
+            if all(m in err_text for m in ('visit_events',)) and any(m in err_text for m in missing_table_markers[1:]):
+                try:
+                    with app.app_context():
+                        db.create_all()
+                    _store_visit_in_db()
+                except Exception as retry_err:
+                    print(f"Retry after db.create_all failed: {retry_err}")
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
+
+        # Optional: Store in Supabase if available
+        if supabase:
+            visit_data = {
+                'session_id': session_id,
+                'ip_address': ip_address,
+                'user_agent': resolved_user_agent,
+                'page_url': resolved_page_url,
+                'screen_resolution': screen_resolution,
+                'referrer': resolved_referrer,
+                'timestamp': datetime.now(UTC).isoformat(),
+                'user_id': user_id,
+                'action': resolved_action,
+                'project_id': str(project_id) if project_id not in (None, '') else None,
+            }
+
+            try:
+                supabase.table('user_visits').insert(visit_data).execute()
+                supabase_ok = True
+            except Exception as sb_err:
+                # If Supabase schema doesn't support some fields, retry without optional keys.
+                print(f"Failed to store visit in Supabase (full payload): {sb_err}")
+                try:
+                    slim = dict(visit_data)
+                    slim.pop('project_id', None)
+                    supabase.table('user_visits').insert(slim).execute()
+                    supabase_ok = True
+                except Exception as sb_err2:
+                    print(f"Failed to store visit in Supabase (slim payload): {sb_err2}")
+
+        return db_ok or supabase_ok
         
     except Exception as e:
         print(f"Failed to track user visit: {e}")
         return False
 
 def get_user_analytics(days=30):
-    """Get user analytics from Supabase"""
+    """Get user analytics.
+
+    Prefer Supabase if configured; otherwise fall back to the main database.
+    """
     print(f"Getting user analytics for {days} days")
     print(f"Supabase client available: {supabase is not None}")
-    
-    if not supabase:
-        print("No Supabase client, returning None")
-        return None
-    
+
+    # Calculate the timestamp for N days ago
+    from datetime import timedelta
+    cutoff_date = datetime.now(UTC) - timedelta(days=days)
+    cutoff_iso = cutoff_date.isoformat()
+    print(f"Cutoff date: {cutoff_iso}")
+
+    if supabase:
+        try:
+            result = supabase.table('user_visits').select('*').gte('timestamp', cutoff_iso).execute()
+            print(f"Retrieved {len(result.data) if result.data else 0} records")
+            return result.data
+        except Exception as e:
+            print(f"Failed to get user analytics from Supabase: {e}")
+
+    # Fallback: read from app DB
     try:
-        # Calculate the timestamp for N days ago
-        from datetime import timedelta
-        cutoff_date = datetime.now(UTC) - timedelta(days=days)
-        cutoff_iso = cutoff_date.isoformat()
-        print(f"Cutoff date: {cutoff_iso}")
-        
-        # Get visits from last N days
-        result = supabase.table('user_visits').select('*').gte('timestamp', cutoff_iso).execute()
-        print(f"Retrieved {len(result.data) if result.data else 0} records")
-        return result.data
+        cutoff_naive = cutoff_date.replace(tzinfo=None)
+        events = VisitEvent.query.filter(VisitEvent.timestamp >= cutoff_naive).order_by(VisitEvent.timestamp.asc()).all()
+        data = [e.to_dict() for e in events]
+        print(f"Retrieved {len(data)} records from DB")
+        return data
     except Exception as e:
-        print(f"Failed to get user analytics: {e}")
-        return None
+        print(f"Failed to get user analytics from DB: {e}")
+        return []
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -1044,15 +1133,17 @@ def track_visit():
             page_url=data.get('page_url'),
             user_agent=data.get('user_agent'),
             screen_resolution=data.get('screen_resolution'),
-            referrer=data.get('referrer')
+            referrer=data.get('referrer'),
+            action=data.get('action'),
+            project_id=data.get('project_id')
         )
         
         print(f"Tracking result: {success}")
         
         if success:
             return jsonify({'status': 'success'}), 200
-        else:
-            return jsonify({'status': 'error', 'message': 'Failed to track visit'}), 500
+
+        return jsonify({'status': 'error', 'message': 'Failed to track visit'}), 500
             
     except Exception as e:
         print(f"Error in track_visit: {e}")
