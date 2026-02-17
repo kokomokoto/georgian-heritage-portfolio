@@ -6,13 +6,14 @@ This is a minimal version of the portfolio app used for emergency recovery.
 It provides basic functionality to get the site back online quickly.
 """
 
-from flask import Flask, render_template_string
+from flask import Flask, jsonify, render_template_string
 import os
 
 app = Flask(__name__)
 
 # Basic configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'emergency-recovery-key')
+app.config['GA_MEASUREMENT_ID'] = os.environ.get('GA_MEASUREMENT_ID', '').strip()
 
 @app.route('/')
 def home():
@@ -83,6 +84,36 @@ def home():
 def health():
     """Health check endpoint"""
     return {'status': 'ok', 'mode': 'emergency_recovery'}
+
+
+@app.route('/api/ga-status')
+def ga_status():
+    """Debug endpoint to verify GA4 Measurement ID is configured."""
+    mid = (app.config.get('GA_MEASUREMENT_ID') or '').strip()
+    return jsonify({
+        'ga_configured': bool(mid),
+        'ga_measurement_id': (mid[:2] + '…' + mid[-4:]) if mid else None,
+        'mode': 'emergency_recovery',
+    })
+
+
+@app.route('/api/version')
+def api_version():
+    """Debug endpoint to confirm which build is deployed (no secrets)."""
+    mid = (app.config.get('GA_MEASUREMENT_ID') or '').strip()
+    commit = (
+        os.environ.get('RENDER_GIT_COMMIT')
+        or os.environ.get('GIT_COMMIT')
+        or os.environ.get('COMMIT_SHA')
+        or None
+    )
+    return jsonify({
+        'status': 'ok',
+        'mode': 'emergency_recovery',
+        'git_commit': commit,
+        'ga_configured': bool(mid),
+        'ga_measurement_id': (mid[:2] + '…' + mid[-4:]) if mid else None,
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

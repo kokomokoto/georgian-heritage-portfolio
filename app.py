@@ -269,13 +269,16 @@ app = Flask(__name__)
 
 # Initialize Supabase client
 supabase_url = os.environ.get('SUPABASE_URL')
-supabase_key = os.environ.get('SUPABASE_ANON_KEY')
+supabase_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or os.environ.get('SUPABASE_ANON_KEY')
+supabase_key_type = (
+    'service_role' if os.environ.get('SUPABASE_SERVICE_ROLE_KEY') else ('anon' if os.environ.get('SUPABASE_ANON_KEY') else None)
+)
 supabase: Client = None
 
 if supabase_url and supabase_key:
     try:
         supabase = create_client(supabase_url, supabase_key)
-        print("Supabase client initialized successfully")
+        print(f"Supabase client initialized successfully ({supabase_key_type})")
     except Exception as e:
         print(f"Failed to initialize Supabase client: {e}")
         supabase = None
@@ -293,6 +296,36 @@ def inject_global_settings():
     return {
         'ga_measurement_id': app.config.get('GA_MEASUREMENT_ID', '')
     }
+
+
+@app.route('/health')
+def health():
+    """Lightweight health check for load balancers and debugging."""
+    mid = (app.config.get('GA_MEASUREMENT_ID') or '').strip()
+    return jsonify({
+        'status': 'ok',
+        'mode': 'full_app',
+        'ga_configured': bool(mid),
+    })
+
+
+@app.route('/api/version')
+def api_version():
+    """Debug endpoint to confirm which build is deployed (no secrets)."""
+    mid = (app.config.get('GA_MEASUREMENT_ID') or '').strip()
+    commit = (
+        os.environ.get('RENDER_GIT_COMMIT')
+        or os.environ.get('GIT_COMMIT')
+        or os.environ.get('COMMIT_SHA')
+        or None
+    )
+    return jsonify({
+        'status': 'ok',
+        'mode': 'full_app',
+        'git_commit': commit,
+        'ga_configured': bool(mid),
+        'ga_measurement_id': (mid[:2] + '…' + mid[-4:]) if mid else None,
+    })
 
 # Database configuration - ALWAYS REQUIRE DATABASE_URL
 database_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRESQL_DATABASE_URL') or os.environ.get('DB_CONNECTION_STRING')
@@ -607,7 +640,9 @@ def track_user_visit(page_url=None, user_agent=None, screen_resolution=None, ref
 def get_user_analytics(days=30):
     """Get user analytics.
 
-    Prefer Supabase if configured; otherwise fall back to the main database.
+        Return a merged view of analytics from:
+            - Supabase (legacy store; if configured)
+            - App DB (current store)
     """
     print(f"Getting user analytics for {days} days")
     print(f"Supabase client available: {supabase is not None}")
@@ -618,24 +653,101 @@ def get_user_analytics(days=30):
     cutoff_iso = cutoff_date.isoformat()
     print(f"Cutoff date: {cutoff_iso}")
 
-    if supabase:
-        try:
-            result = supabase.table('user_visits').select('*').gte('timestamp', cutoff_iso).execute()
-            print(f"Retrieved {len(result.data) if result.data else 0} records")
-            return result.data
-        except Exception as e:
-            print(f"Failed to get user analytics from Supabase: {e}")
+    def _parse_ts(value):
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                # Handle common ISO forms like '...Z'
+                if value.endswith('Z'):
+                    value = value[:-1] + '+00:00'
+                return datetime.fromisoformat(value)
+            except Exception:
+                return None
+        return None
 
-    # Fallback: read from app DB
+    def _normalize_record(rec):
+        if not isinstance(rec, dict):
+            return None
+
+        # Ensure keys exist for the dashboard logic
+        normalized = {
+            'timestamp': rec.get('timestamp'),
+            'session_id': rec.get('session_id'),
+            'user_id': rec.get('user_id'),
+            'ip_address': rec.get('ip_address') or rec.get('ip'),
+            'user_agent': rec.get('user_agent'),
+            'page_url': rec.get('page_url') or rec.get('page'),
+            'referrer': rec.get('referrer'),
+            'screen_resolution': rec.get('screen_resolution'),
+            'action': rec.get('action') or 'page_view',
+            'project_id': rec.get('project_id'),
+        }
+        return normalized
+
+    # Read from app DB (always)
+    db_data = []
     try:
         cutoff_naive = cutoff_date.replace(tzinfo=None)
         events = VisitEvent.query.filter(VisitEvent.timestamp >= cutoff_naive).order_by(VisitEvent.timestamp.asc()).all()
-        data = [e.to_dict() for e in events]
-        print(f"Retrieved {len(data)} records from DB")
-        return data
+        db_data = [e.to_dict() for e in events]
+        print(f"Retrieved {len(db_data)} records from DB")
     except Exception as e:
         print(f"Failed to get user analytics from DB: {e}")
-        return []
+
+    # Read from Supabase (optional)
+    supabase_data = []
+    if supabase:
+        try:
+            result = (
+                supabase.table('user_visits')
+                .select('*')
+                .gte('timestamp', cutoff_iso)
+                .execute()
+            )
+            supabase_data = result.data or []
+            print(f"Retrieved {len(supabase_data)} records from Supabase")
+        except Exception as e:
+            print(f"Failed to get user analytics from Supabase: {e}")
+
+    merged = []
+    seen = set()
+
+    def _dedup_key(rec):
+        ts = rec.get('timestamp')
+        # Keep ts as string for stable hashing
+        return (
+            str(ts) if ts is not None else None,
+            rec.get('session_id'),
+            rec.get('action'),
+            rec.get('page_url'),
+            rec.get('project_id'),
+        )
+
+    for raw in supabase_data:
+        norm = _normalize_record(raw)
+        if not norm:
+            continue
+        key = _dedup_key(norm)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(norm)
+
+    for raw in db_data:
+        if not isinstance(raw, dict):
+            continue
+        key = _dedup_key(raw)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(raw)
+
+    merged.sort(key=lambda r: _parse_ts(r.get('timestamp')) or datetime.min)
+    print(f"Merged analytics records: {len(merged)}")
+    return merged
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -1153,14 +1265,19 @@ def track_visit():
 def debug_supabase():
     """Debug endpoint to check Supabase configuration"""
     supabase_url = os.environ.get('SUPABASE_URL')
-    supabase_key = os.environ.get('SUPABASE_ANON_KEY')
+    anon_key = os.environ.get('SUPABASE_ANON_KEY')
+    service_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+    active_key = service_key or anon_key
+    active_key_type = 'service_role' if service_key else ('anon' if anon_key else None)
     
     return jsonify({
         'supabase_url_configured': bool(supabase_url),
-        'supabase_key_configured': bool(supabase_key),
+        'supabase_anon_key_configured': bool(anon_key),
+        'supabase_service_role_key_configured': bool(service_key),
+        'supabase_active_key_type': active_key_type,
         'supabase_client_initialized': supabase is not None,
         'supabase_url_masked': supabase_url[:20] + '...' if supabase_url else None,
-        'supabase_key_masked': supabase_key[:10] + '...' if supabase_key else None
+        'supabase_key_masked': active_key[:10] + '...' if active_key else None
     })
 
 @app.route('/api/test-tracking')
@@ -1177,6 +1294,16 @@ def test_tracking():
         'tracking_success': success,
         'supabase_available': supabase is not None,
         'message': 'Test tracking completed' if success else 'Test tracking failed'
+    })
+
+
+@app.route('/api/ga-status')
+def ga_status():
+    """Debug endpoint to verify GA4 Measurement ID is configured."""
+    mid = (app.config.get('GA_MEASUREMENT_ID') or '').strip()
+    return jsonify({
+        'ga_configured': bool(mid),
+        'ga_measurement_id': (mid[:2] + '…' + mid[-4:]) if mid else None,
     })
 
 @app.route('/analytics/login', methods=['GET', 'POST'])
@@ -1213,7 +1340,12 @@ def analytics_dashboard():
     """Analytics dashboard - requires analytics login"""
     
     # Get analytics data
-    analytics_data = get_user_analytics(days=30)
+    try:
+        analytics_days = int((os.environ.get('ANALYTICS_DAYS') or '30').strip())
+    except Exception:
+        analytics_days = 30
+    analytics_days = max(1, min(3650, analytics_days))
+    analytics_data = get_user_analytics(days=analytics_days)
     
     # Process data for display
     stats = {
