@@ -24,6 +24,20 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Local database
+instance/
+*.db
+
+# Legacy JSON backups (may contain production data)
+projects.json
+comments.json
+_all_dev_db_projects.json
+_production_projects_full.json
+
+# Logs
+*.log
+upload_debug.log
+
 # Local uploads (don't commit user uploads)
 projects/*/
 uploads/
@@ -34,5 +48,5 @@ static/uploads/
 !uploads/.gitkeep
 !static/uploads/.gitkeep
 
-# Local config
-.env
+# Static site build artifacts
+_cloudflare_static/

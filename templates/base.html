@@ -38,7 +38,7 @@
                 <a href="/" class="{% if request.endpoint == 'index' %}active{% endif %}">PROJECTS</a>
                 <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}">ABOUT</a>
                 <a href="{{ url_for('contact') }}" class="{% if request.endpoint == 'contact' %}active{% endif %}">CONTACT</a>
-                {% if current_user.is_authenticated %}
+                {% if session.get('logged_in') %}
                     <a href="{{ url_for('admin_panel') }}" class="{% if request.endpoint == 'admin_panel' %}active{% endif %}">ADMIN</a>
                 {% endif %}
             </nav>
@@ -50,24 +50,8 @@
                     <input type="text" id="searchInput" name="q" placeholder="ძებნა სათაურით" class="form-control form-control-sm" autocomplete="off" style="width: 200px;" />
                 </form>
                 
-                <!-- User Menu -->
-                {% if current_user.is_authenticated %}
-                    <div class="dropdown">
-                        <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle me-2"></i>
-                            {{ current_user.email }}
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-                                <i class="bi bi-box-arrow-right"></i> გასვლა
-                            </a></li>
-                        </ul>
-                    </div>
-                {% else %}
-                    <div>
-                        <a href="{{ url_for('login') }}" class="btn btn-outline-light">შესვლა</a>
-                        <a href="{{ url_for('register') }}" class="btn btn-light">რეგისტრაცია</a>
-                    </div>
+                {% if session.get('logged_in') %}
+                    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-light btn-sm">ადმინი</a>
                 {% endif %}
             </div>
         </div>
@@ -223,86 +207,5 @@
         }
     </script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <!-- User Monitoring Script -->
-    <script>
-        // User monitoring and analytics
-        (function() {
-            'use strict';
-            
-            // Function to get screen resolution
-            function getScreenResolution() {
-                return window.screen.width + 'x' + window.screen.height;
-            }
-            
-            // Function to track page visit
-            function trackVisit() {
-                const data = {
-                    page_url: window.location.href,
-                    user_agent: navigator.userAgent,
-                    screen_resolution: getScreenResolution(),
-                    referrer: document.referrer || null,
-                    timestamp: new Date().toISOString()
-                };
-                
-                // Send data to server
-                fetch('/api/track-visit', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        console.warn('Failed to track visit:', response.status);
-                    }
-                })
-                .catch(error => {
-                    console.warn('Error tracking visit:', error);
-                });
-            }
-            
-            // Track visit on page load
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', trackVisit);
-            } else {
-                trackVisit();
-            }
-            
-            // Track visit on page visibility change (user returns to tab)
-            document.addEventListener('visibilitychange', function() {
-                if (!document.hidden) {
-                    trackVisit();
-                }
-            });
-            
-            // Track clicks on important elements (optional)
-            document.addEventListener('click', function(e) {
-                // Track clicks on project cards
-                if (e.target.closest('.project-card')) {
-                    const card = e.target.closest('.project-card');
-                    const projectId = card.dataset.projectId || 'unknown';
-                    
-                    fetch('/api/track-visit', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            page_url: window.location.href,
-                            user_agent: navigator.userAgent,
-                            screen_resolution: getScreenResolution(),
-                            referrer: document.referrer || null,
-                            action: 'project_click',
-                            project_id: projectId,
-                            timestamp: new Date().toISOString()
-                        })
-                    }).catch(error => console.warn('Error tracking click:', error));
-                }
-            });
-            
-        })();
-    </script>
 </body>
 </html>

@@ -8,7 +8,14 @@
 <body>
 <div class="container mt-4">
     <h1>ახალი პროექტის ატვირთვა</h1>
-    <form method="post" enctype="multipart/form-data">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'error' else 'info' }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+    <form method="post" action="{{ url_for('upload_project') }}" enctype="multipart/form-data">
         <div class="mb-3">
             <label class="form-label">სათაური</label>
             <input type="text" name="title" class="form-control" required>
@@ -160,7 +167,7 @@
                     <div class="col-md-5">
                         <label class="form-label small">სურათის URL *</label>
                         <input type="url" name="all_image_url_0" class="form-control" 
-                               placeholder="https://example.com/image.jpg" required>
+                               placeholder="https://example.com/image.jpg" id="all_image_url_0">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small">აღწერა</label>
@@ -275,8 +282,19 @@
         </div>
         
         <script>
-        // Show loading modal on form submit
-        document.querySelector('button[type="submit"]').addEventListener('click', function(e) {
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const url0 = document.getElementById('all_image_url_0');
+            const imageFiles = document.querySelector('input[name="image_files"]').files;
+            const hasUrl = url0 && url0.value.trim();
+            const hasFiles = imageFiles && imageFiles.length > 0;
+            if (!hasUrl && !hasFiles) {
+                e.preventDefault();
+                alert('მიუთითე მთავარი სურათის URL ან აირჩიე ფოტო კომპიუტერიდან.');
+                return;
+            }
+        });
+
+        document.getElementById('uploadSubmitBtn').addEventListener('click', function(e) {
             // Check if any files are selected
             const imageFiles = document.querySelector('input[name="image_files"]').files;
             const modelFiles = document.querySelector('input[name="model_files"]').files;
@@ -316,7 +334,7 @@
         });
         </script>
         
-        <button type="submit" class="btn btn-primary">ატვირთვა</button>
+        <button type="submit" class="btn btn-primary" id="uploadSubmitBtn">ატვირთვა</button>
         <a href="/admin/panel" class="btn btn-link">უკან</a>
     </form>
 </div>

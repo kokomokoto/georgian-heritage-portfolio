@@ -8,20 +8,26 @@
 <body>
 <div class="container mt-4" style="max-width:400px;">
     <h1>ადმინ შესვლა</h1>
-    <form method="post">
+    <p class="text-muted small">გამოიყენე <strong>http://127.0.0.1:5002/admin</strong> (არა localhost)</p>
+    <form method="post" action="{{ url_for('admin_login') }}">
+        {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
         <div class="mb-3">
             <label class="form-label">მომხმარებელი</label>
-            <input type="text" name="username" class="form-control" required>
+            <input type="text" name="username" class="form-control" required autocomplete="username">
         </div>
         <div class="mb-3">
             <label class="form-label">პაროლი</label>
-            <input type="password" name="password" class="form-control" required>
+            <input type="password" name="password" class="form-control" required autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-primary">შესვლა</button>
     </form>
-    {% with messages = get_flashed_messages() %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="alert alert-danger mt-3">{{ messages[0] }}</div>
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} mt-3">{{ message }}</div>
+        {% endfor %}
       {% endif %}
     {% endwith %}
 </div>

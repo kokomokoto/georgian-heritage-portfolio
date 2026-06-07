@@ -257,12 +257,14 @@
         </div>
         {% endif %}
         {% for img in project.other_images %}
-        {% if img.url %}
+        {% set img_url = img.url if img is mapping else img %}
+        {% set img_cap = img.caption if img is mapping else '' %}
+        {% if img_url %}
         <div class="col-md-3 mb-2">
-            <a href="{{ img.url }}" class="glightbox" data-gallery="gallery1" data-title="{{ img.caption }}">
-                <img src="{{ img.url }}" class="img-thumbnail" alt="სურათი">
+            <a href="{{ img_url }}" class="glightbox" data-gallery="gallery1" data-title="{{ img_cap }}">
+                <img src="{{ img_url }}" class="img-thumbnail" alt="სურათი">
             </a>
-            <div class="text-center small text-muted mt-1">{{ img.caption }}</div>
+            {% if img_cap %}<div class="text-center small text-muted mt-1">{{ img_cap }}</div>{% endif %}
         </div>
         {% endif %}
         {% endfor %}
@@ -272,15 +274,19 @@
     <h4>3D მოდელები</h4>
     <div class="row">
         {% for model in project.model_urls %}
+        {% set model_url = model.url if model is mapping else model %}
+        {% set model_cap = model.caption if model is mapping else '3D მოდელი' %}
+        {% if model_url %}
         <div class="col-md-4 mb-3">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="card-title">{{ model.caption }}</h6>
-                    <a href="{{ model.url }}" target="_blank" class="btn btn-primary btn-sm">გახსენი 3D მოდელი</a>
-                    <small class="text-muted d-block mt-1">{{ model.url.split('/')[-1] }}</small>
+                    <h6 class="card-title">{{ model_cap }}</h6>
+                    <a href="{{ model_url }}" target="_blank" class="btn btn-primary btn-sm">გახსენი 3D მოდელი</a>
+                    <small class="text-muted d-block mt-1">{{ model_url.split('/')[-1] }}</small>
                 </div>
             </div>
         </div>
+        {% endif %}
         {% endfor %}
     </div>
     {% endif %}
@@ -383,6 +389,7 @@
     }
     </style>
     
+    {% if not cms_preview %}
     <div class="fb-comments">
         <h4 style="margin-bottom: 20px; color: #1c1e21;">კომენტარები</h4>
         
@@ -675,6 +682,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
     
     <!-- Simple Full Screen Image Modal -->
     <div id="imageModal" onclick="closeImageModal()" style="
@@ -892,6 +900,7 @@
     }
     </style>
     
+    {% if not cms_preview %}
     <script>
     // Function for deleting comments by registered users (no email required)
     function deleteComment(commentId, projectId) {
@@ -902,27 +911,6 @@
             
             document.body.appendChild(form);
             form.submit();
-        }
-    }
-    
-    // Global function for deleting comments by email verification
-    function deleteCommentWithEmail(commentId, projectId) {
-        const email = prompt('თქვენი ემეილი კომენტარის წასაშლელად:');
-        if (email && email.trim()) {
-            if (confirm('ნამდვილად გსურთ ამ კომენტარის წაშლა?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/delete_comment/${commentId}/${projectId}`;
-                
-                const emailInput = document.createElement('input');
-                emailInput.type = 'hidden';
-                emailInput.name = 'author_email';
-                emailInput.value = email.trim();
-                form.appendChild(emailInput);
-                
-                document.body.appendChild(form);
-                form.submit();
-            }
         }
     }
     
@@ -1422,6 +1410,7 @@
     
     }); // Close DOMContentLoaded
     </script>
+    {% endif %}
     <a href="/" class="btn btn-link mt-3">უკან</a>
 </div>
 {% endblock %}
@@ -1568,4 +1557,3 @@
         {% endif %}
     </script>
 {% endblock %}
-</html>

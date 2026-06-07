@@ -25,9 +25,14 @@
     height: 150px;
     border-radius: 50%;
     border: 5px solid var(--gold-accent);
-    object-fit: cover;
     margin: 0 auto 1.5rem;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--gold-accent);
 }
 
 .cv-name {
@@ -185,7 +190,7 @@
 <div class="cv-container">
     <!-- CV Header -->
     <header class="cv-header">
-        <img src="{{ url_for('static', filename='images/kepman.jpg') }}" alt="Profile Photo" class="cv-photo">
+        <div class="cv-photo" aria-label="Profile Photo">გკ</div>
         <h1 class="cv-name">გიორგი კეპულაძე</h1>
         <p class="cv-title">კულტურული მემკვიდრეობის სპეციალისტი | არქიტექტორი</p>
 

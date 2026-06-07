@@ -1,20 +1,14 @@
-"""
-Local CMS for static Cloudflare site.
-Run: python app.py  ->  http://127.0.0.1:5002/admin
-Publish: publish.ps1
-"""
-
 import os
-import sys
-import subprocess
+import secrets
 import time
 import uuid
 import io
 from datetime import datetime, UTC
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash
-from werkzeug.exceptions import RequestEntityTooLarge
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_from_directory, flash, abort
 from werkzeug.utils import secure_filename
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_migrate import Migrate
+from flask_mail import Mail, Message
 import boto3
 from botocore.client import Config
 import cloudinary
@@ -25,8 +19,45 @@ import re
 from functools import wraps
 from dotenv import load_dotenv
 from docx import Document
+from supabase import create_client, Client
 
 load_dotenv()
+
+IS_PRODUCTION = bool(
+    os.environ.get('DATABASE_URL')
+    or os.environ.get('POSTGRESQL_DATABASE_URL')
+    or os.environ.get('DB_CONNECTION_STRING')
+    or os.environ.get('FLASK_ENV') == 'production'
+)
+
+
+def dev_only(view):
+    """Hide debug/test routes in production."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if IS_PRODUCTION:
+            abort(404)
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def sync_export_allowed():
+    if session.get('logged_in'):
+        return True
+    token = (os.environ.get('SYNC_EXPORT_TOKEN') or '').strip()
+    if not token:
+        return not IS_PRODUCTION
+    provided = (request.args.get('token') or request.headers.get('X-Sync-Token') or '').strip()
+    return secrets.compare_digest(provided, token)
+
+
+def sync_export_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not sync_export_allowed():
+            return jsonify({'error': 'Unauthorized'}), 403
+        return view(*args, **kwargs)
+    return wrapped
 
 # Initialize Cloudflare R2 client for large files
 r2_client = None
@@ -269,25 +300,37 @@ def extract_text_from_file(file, project_id=None):
 
 app = Flask(__name__)
 
+# Initialize Supabase client
+supabase_url = os.environ.get('SUPABASE_URL')
+supabase_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or os.environ.get('SUPABASE_ANON_KEY')
+supabase_key_type = (
+    'service_role' if os.environ.get('SUPABASE_SERVICE_ROLE_KEY') else ('anon' if os.environ.get('SUPABASE_ANON_KEY') else None)
+)
+supabase: Client = None
 
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'local-cms-dev-key'
+if supabase_url and supabase_key:
+    try:
+        supabase = create_client(supabase_url, supabase_key)
+        print(f"Supabase client initialized successfully ({supabase_key_type})")
+    except Exception as e:
+        print(f"Failed to initialize Supabase client: {e}")
+        supabase = None
+else:
+    print("Supabase credentials not configured, user monitoring will be disabled")
+
+# Configuration
+_secret = os.environ.get('SECRET_KEY')
+if IS_PRODUCTION and not _secret:
+    raise RuntimeError('SECRET_KEY environment variable is required in production')
+app.config['SECRET_KEY'] = _secret or 'dev-secret-change-in-production'
 
 # Google Analytics 4 (optional)
 app.config['GA_MEASUREMENT_ID'] = (os.environ.get('GA_MEASUREMENT_ID') or '').strip()
 
-class _GuestUser:
-    """Stub for templates after user auth was removed (static site / CMS preview)."""
-    is_authenticated = False
-    is_active = False
-    id = None
-    name = ''
-
-
 @app.context_processor
 def inject_global_settings():
     return {
-        'ga_measurement_id': app.config.get('GA_MEASUREMENT_ID', ''),
-        'current_user': _GuestUser(),
+        'ga_measurement_id': app.config.get('GA_MEASUREMENT_ID', '')
     }
 
 
@@ -320,18 +363,32 @@ def api_version():
         'ga_measurement_id': (mid[:2] + '…' + mid[-4:]) if mid else None,
     })
 
-sqlite_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'portfolio.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{sqlite_path}'
-print(f'CMS: SQLite at {sqlite_path}')
+# Database configuration - PostgreSQL for production, SQLite for local development
+database_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRESQL_DATABASE_URL') or os.environ.get('DB_CONNECTION_STRING')
+if database_url:
+    # Use pg8000 for Python 3.13 compatibility (pure Python driver)
+    if database_url.startswith('postgresql://'):
+        database_url = database_url.replace('postgresql://', 'postgresql+pg8000://', 1)
+    elif database_url.startswith('postgresql+psycopg2cffi://'):
+        database_url = database_url.replace('postgresql+psycopg2cffi://', 'postgresql+pg8000://', 1)
+    elif database_url.startswith('postgresql+psycopg2://'):
+        database_url = database_url.replace('postgresql+psycopg2://', 'postgresql+pg8000://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print(f"Using database URL: {database_url[:50]}...")
+else:
+    # Local development - use SQLite
+    sqlite_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance', 'portfolio.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{sqlite_path}'
+    print(f"LOCAL MODE: Using SQLite database at {sqlite_path}")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
-# Session (local CMS — keep login across large uploads)
+# Session configuration for better security
 app.config['SESSION_PERMANENT'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = 86400 * 7  # 7 days for local editing
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = False
-app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour instead of 24 hours
+app.config['SESSION_COOKIE_DOMAIN'] = None  # Only this domain
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
 
 # Remove SERVER_NAME for now as it can cause session issues
 # Only set SERVER_NAME for local development
@@ -351,18 +408,42 @@ app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') or 'your_app_passw
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME') or 'your_email@gmail.com'
 
 # Import models after app creation
-from models import db, Project, SiteSetting
+from models import db, User, Comment, Like, Project, SiteSetting, VisitEvent
+from forms import RegistrationForm, LoginForm, ForgotPasswordForm, ResetPasswordForm
+
+@app.after_request
+def add_cors_headers(response):
+    if request.path.startswith('/api/'):
+        origin = request.headers.get('Origin')
+        if IS_PRODUCTION:
+            allowed = [o.strip() for o in (os.environ.get('CORS_ALLOWED_ORIGINS') or '').split(',') if o.strip()]
+            if origin and origin in allowed:
+                response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = origin or '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Sync-Token'
+    return response
 
 # Initialize extensions
 db.init_app(app)
 migrate = Migrate(app, db)
+mail = Mail(app)
 
 PROJECTS_DIR = 'projects'
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'webm', 'ogg', 'mov', 'avi', 'docx', 'html', 'pdf', 'txt', 'doc'}
 
-ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'kepulia')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'kepulia123')
+if IS_PRODUCTION:
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+    ANALYTICS_USERNAME = os.environ.get('ANALYTICS_USERNAME')
+    ANALYTICS_PASSWORD = os.environ.get('ANALYTICS_PASSWORD')
+else:
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'kepulia')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'kepulia123')
+    ANALYTICS_USERNAME = os.environ.get('ANALYTICS_USERNAME', 'kanalytics')
+    ANALYTICS_PASSWORD = os.environ.get('ANALYTICS_PASSWORD', 'kanalytics2026')
 
 # Initialize database
 try:
@@ -379,6 +460,16 @@ except Exception as e:
     print(f"WARNING: Database initialization error: {e}")
     # Continue anyway - don't crash the app
 
+# Login Manager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'გთხოვთ შეხვიდეთ ანგარიშში.'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 # Cloudinary Configuration
 cloudinary.config(
     cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
@@ -387,6 +478,317 @@ cloudinary.config(
 )
 
 # Helpers
+
+def send_email(subject, recipient, template, **kwargs):
+    """Send email using Flask-Mail"""
+    try:
+        # For development: print email content to console instead of sending
+        if app.config.get('MAIL_USERNAME') == 'your_email@gmail.com':
+            print(f"\n=== EMAIL DEBUG (Development Mode) ===")
+            print(f"To: {recipient}")
+            print(f"Subject: {subject}")
+            if 'reset_url' in kwargs:
+                print(f"Reset URL: {kwargs['reset_url']}")
+            if 'verification_url' in kwargs:
+                print(f"Verification URL: {kwargs['verification_url']}")
+            print("=== END EMAIL DEBUG ===\n")
+            return True
+        
+        # Production email sending
+        msg = Message(
+            subject=subject,
+            recipients=[recipient],
+            html=render_template(template, **kwargs),
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
+
+def send_verification_email(user):
+    """Send email verification"""
+    token = user.generate_verification_token()
+    db.session.commit()
+    
+    verification_url = url_for('verify_email', token=token, _external=True)
+    return send_email(
+        subject='ელ.ფოსტის დადასტურება - ქართული მემკვიდრეობა',
+        recipient=user.email,
+        template='email/verify_email.html',
+        user=user,
+        verification_url=verification_url
+    )
+
+def send_password_reset_email(user):
+    """Send password reset email"""
+    token = user.generate_reset_token()
+    db.session.commit()
+    
+    reset_url = url_for('reset_password', token=token, _external=True)
+    return send_email(
+        subject='პაროლის აღდგენა - ქართული მემკვიდრეობა',
+        recipient=user.email,
+        template='email/reset_password.html',
+        user=user,
+        reset_url=reset_url
+    )
+
+# User Monitoring Functions
+
+def get_client_ip():
+    """Get the client's real IP address"""
+    if request.headers.get('X-Forwarded-For'):
+        # Handle comma-separated IPs (first one is the original client)
+        ip = request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    elif request.headers.get('X-Real-IP'):
+        ip = request.headers.get('X-Real-IP')
+    else:
+        ip = request.remote_addr
+    return ip
+
+def track_user_visit(page_url=None, user_agent=None, screen_resolution=None, referrer=None, action=None, project_id=None):
+    """Track user visit.
+
+    Primary storage: app database (PostgreSQL on Render).
+    Optional secondary storage: Supabase (if configured).
+    """
+    db_ok = False
+    supabase_ok = False
+
+    try:
+        # Get user data
+        ip_address = get_client_ip()
+        
+        # Validate IP address - if invalid, set to None
+        if not ip_address or ip_address == 'None':
+            ip_address = None
+        
+        # Get session ID safely
+        session_id = None
+        try:
+            session_id = session.get('user_session_id')
+        except RuntimeError:
+            # Outside request context
+            session_id = str(uuid.uuid4())
+        
+        # Generate session ID if not exists
+        if not session_id:
+            session_id = str(uuid.uuid4())
+            try:
+                session['user_session_id'] = session_id
+            except RuntimeError:
+                # Outside request context, can't set session
+                pass
+        
+        # Get user ID safely
+        user_id = None
+        try:
+            if current_user.is_authenticated:
+                user_id = current_user.id
+        except RuntimeError:
+            # Outside request context
+            pass
+        
+        resolved_user_agent = user_agent or (request.headers.get('User-Agent') if request else 'Unknown')
+        resolved_page_url = page_url or (request.url if request else 'Unknown')
+        resolved_referrer = referrer or (request.referrer if request else None)
+        resolved_action = (action or 'page_view')
+
+        # Store in main database
+        def _store_visit_in_db() -> None:
+            nonlocal db_ok
+            evt = VisitEvent(
+                session_id=session_id,
+                user_id=user_id,
+                ip_address=ip_address,
+                user_agent=resolved_user_agent,
+                page_url=resolved_page_url,
+                referrer=resolved_referrer,
+                screen_resolution=screen_resolution,
+                action=resolved_action,
+                project_id=str(project_id) if project_id not in (None, '') else None,
+            )
+            db.session.add(evt)
+            db.session.commit()
+            db_ok = True
+
+        try:
+            _store_visit_in_db()
+        except Exception as db_err:
+            err_text = str(db_err)
+            print(f"Failed to store visit in DB: {db_err}")
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+            # If the new table isn't present yet (common right after deploy), create missing tables and retry once.
+            missing_table_markers = (
+                'visit_events',
+                'does not exist',
+                'UndefinedTable',
+                'no such table'
+            )
+            if all(m in err_text for m in ('visit_events',)) and any(m in err_text for m in missing_table_markers[1:]):
+                try:
+                    with app.app_context():
+                        db.create_all()
+                    _store_visit_in_db()
+                except Exception as retry_err:
+                    print(f"Retry after db.create_all failed: {retry_err}")
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
+
+        # Optional: Store in Supabase if available
+        if supabase:
+            visit_data = {
+                'session_id': session_id,
+                'ip_address': ip_address,
+                'user_agent': resolved_user_agent,
+                'page_url': resolved_page_url,
+                'screen_resolution': screen_resolution,
+                'referrer': resolved_referrer,
+                'timestamp': datetime.now(UTC).isoformat(),
+                'user_id': user_id,
+                'action': resolved_action,
+                'project_id': str(project_id) if project_id not in (None, '') else None,
+            }
+
+            try:
+                supabase.table('user_visits').insert(visit_data).execute()
+                supabase_ok = True
+            except Exception as sb_err:
+                # If Supabase schema doesn't support some fields, retry without optional keys.
+                print(f"Failed to store visit in Supabase (full payload): {sb_err}")
+                try:
+                    slim = dict(visit_data)
+                    slim.pop('project_id', None)
+                    supabase.table('user_visits').insert(slim).execute()
+                    supabase_ok = True
+                except Exception as sb_err2:
+                    print(f"Failed to store visit in Supabase (slim payload): {sb_err2}")
+
+        return db_ok or supabase_ok
+        
+    except Exception as e:
+        print(f"Failed to track user visit: {e}")
+        return False
+
+def get_user_analytics(days=30):
+    """Get user analytics.
+
+        Return a merged view of analytics from:
+            - Supabase (legacy store; if configured)
+            - App DB (current store)
+    """
+    print(f"Getting user analytics for {days} days")
+    print(f"Supabase client available: {supabase is not None}")
+
+    # Calculate the timestamp for N days ago
+    from datetime import timedelta
+    cutoff_date = datetime.now(UTC) - timedelta(days=days)
+    cutoff_iso = cutoff_date.isoformat()
+    print(f"Cutoff date: {cutoff_iso}")
+
+    def _parse_ts(value):
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                # Handle common ISO forms like '...Z'
+                if value.endswith('Z'):
+                    value = value[:-1] + '+00:00'
+                return datetime.fromisoformat(value)
+            except Exception:
+                return None
+        return None
+
+    def _normalize_record(rec):
+        if not isinstance(rec, dict):
+            return None
+
+        # Ensure keys exist for the dashboard logic
+        normalized = {
+            'timestamp': rec.get('timestamp'),
+            'session_id': rec.get('session_id'),
+            'user_id': rec.get('user_id'),
+            'ip_address': rec.get('ip_address') or rec.get('ip'),
+            'user_agent': rec.get('user_agent'),
+            'page_url': rec.get('page_url') or rec.get('page'),
+            'referrer': rec.get('referrer'),
+            'screen_resolution': rec.get('screen_resolution'),
+            'action': rec.get('action') or 'page_view',
+            'project_id': rec.get('project_id'),
+        }
+        return normalized
+
+    # Read from app DB (always)
+    db_data = []
+    try:
+        cutoff_naive = cutoff_date.replace(tzinfo=None)
+        events = VisitEvent.query.filter(VisitEvent.timestamp >= cutoff_naive).order_by(VisitEvent.timestamp.asc()).all()
+        db_data = [e.to_dict() for e in events]
+        print(f"Retrieved {len(db_data)} records from DB")
+    except Exception as e:
+        print(f"Failed to get user analytics from DB: {e}")
+
+    # Read from Supabase (optional)
+    supabase_data = []
+    if supabase:
+        try:
+            result = (
+                supabase.table('user_visits')
+                .select('*')
+                .gte('timestamp', cutoff_iso)
+                .execute()
+            )
+            supabase_data = result.data or []
+            print(f"Retrieved {len(supabase_data)} records from Supabase")
+        except Exception as e:
+            print(f"Failed to get user analytics from Supabase: {e}")
+
+    merged = []
+    seen = set()
+
+    def _dedup_key(rec):
+        ts = rec.get('timestamp')
+        # Keep ts as string for stable hashing
+        return (
+            str(ts) if ts is not None else None,
+            rec.get('session_id'),
+            rec.get('action'),
+            rec.get('page_url'),
+            rec.get('project_id'),
+        )
+
+    for raw in supabase_data:
+        norm = _normalize_record(raw)
+        if not norm:
+            continue
+        key = _dedup_key(norm)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(norm)
+
+    for raw in db_data:
+        if not isinstance(raw, dict):
+            continue
+        key = _dedup_key(raw)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(raw)
+
+    merged.sort(key=lambda r: _parse_ts(r.get('timestamp')) or datetime.min)
+    print(f"Merged analytics records: {len(merged)}")
+    return merged
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -508,21 +910,42 @@ def save_projects(projects):
         raise
 
 
+def export_comments_data():
+    """Export all comments from the database for sync/backup."""
+    comments = Comment.query.order_by(Comment.created_at.asc()).all()
+    return {
+        'format': 'database_v1',
+        'comments': [
+            {
+                'id': c.id,
+                'content': c.content,
+                'project_id': c.project_id,
+                'user_id': c.user_id,
+                'parent_id': c.parent_id,
+                'media_urls': c.get_media_urls(),
+                'created_at': c.created_at.isoformat() if c.created_at else None,
+                'author_email': c.author.email if c.author else None,
+                'author_name': c.author.name if c.author else None,
+            }
+            for c in comments
+        ],
+    }
 
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get('logged_in'):
-            flash('გთხოვთ ჯერ შეხვიდეთ ადმინ პანელში.', 'error')
             return redirect(url_for('admin_login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
-
-def _login_admin():
-    session.permanent = True
-    session['logged_in'] = True
-    session.modified = True
+def analytics_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('analytics_logged_in'):
+            return redirect(url_for('analytics_login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 def get_site_setting(key, default=None):
@@ -545,15 +968,6 @@ def set_site_setting(key, value):
 
 
 HOME_3D_VIEWER_SETTING_KEY = 'home_3d_viewer'
-
-
-@app.errorhandler(RequestEntityTooLarge)
-def handle_large_upload(e):
-    flash('ფაილი ძალიან დიდია (მაქს. 500MB). სცადე პატარა ფაილი ან Cloudinary/R2-ზე პირდაპირ URL.', 'error')
-    if session.get('logged_in'):
-        return redirect(url_for('upload_project')), 413
-    return redirect(url_for('admin_login', next=url_for('upload_project'))), 413
-
 
 # Routes
 
@@ -836,7 +1250,196 @@ def edit_project(project_id):
     
     return render_template('edit_project.html', project=project, description=project['description'])
 
+# User Monitoring API Endpoints
 
+@app.route('/api/track-visit', methods=['POST'])
+def track_visit():
+    """API endpoint to track user visits"""
+    try:
+        data = request.get_json() or {}
+        print(f"Track visit called with data: {data}")
+        print(f"Supabase client available: {supabase is not None}")
+        
+        # Track the visit
+        success = track_user_visit(
+            page_url=data.get('page_url'),
+            user_agent=data.get('user_agent'),
+            screen_resolution=data.get('screen_resolution'),
+            referrer=data.get('referrer'),
+            action=data.get('action'),
+            project_id=data.get('project_id')
+        )
+        
+        print(f"Tracking result: {success}")
+        
+        if success:
+            return jsonify({'status': 'success'}), 200
+
+        return jsonify({'status': 'error', 'message': 'Failed to track visit'}), 500
+            
+    except Exception as e:
+        print(f"Error in track_visit: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/debug-supabase')
+@dev_only
+def debug_supabase():
+    """Debug endpoint to check Supabase configuration"""
+    supabase_url = os.environ.get('SUPABASE_URL')
+    anon_key = os.environ.get('SUPABASE_ANON_KEY')
+    service_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+    active_key = service_key or anon_key
+    active_key_type = 'service_role' if service_key else ('anon' if anon_key else None)
+    
+    return jsonify({
+        'supabase_url_configured': bool(supabase_url),
+        'supabase_anon_key_configured': bool(anon_key),
+        'supabase_service_role_key_configured': bool(service_key),
+        'supabase_active_key_type': active_key_type,
+        'supabase_client_initialized': supabase is not None,
+        'supabase_url_masked': supabase_url[:20] + '...' if supabase_url else None,
+        'supabase_key_masked': active_key[:10] + '...' if active_key else None
+    })
+
+@app.route('/api/test-tracking')
+@dev_only
+def test_tracking():
+    """Test endpoint to manually create a tracking record"""
+    success = track_user_visit(
+        page_url='https://test-domain.com/test-page',
+        user_agent='Test User Agent',
+        screen_resolution='1920x1080',
+        referrer='https://test-domain.com/'
+    )
+    
+    return jsonify({
+        'tracking_success': success,
+        'supabase_available': supabase is not None,
+        'message': 'Test tracking completed' if success else 'Test tracking failed'
+    })
+
+
+@app.route('/api/ga-status')
+def ga_status():
+    """Debug endpoint to verify GA4 Measurement ID is configured."""
+    mid = (app.config.get('GA_MEASUREMENT_ID') or '').strip()
+    return jsonify({
+        'ga_configured': bool(mid),
+        'ga_measurement_id': (mid[:2] + '…' + mid[-4:]) if mid else None,
+    })
+
+@app.route('/analytics/login', methods=['GET', 'POST'])
+def analytics_login():
+    # Temporarily disabled rate limiting for debugging
+    # Rate limiting: max 5 attempts per 15 minutes
+    # now = datetime.utcnow().timestamp()
+    # attempts = session.get('analytics_login_attempts', [])
+    # Clean old attempts (older than 15 minutes)
+    # attempts = [t for t in attempts if now - t < 900]
+    
+    # if len(attempts) >= 5:
+    #     flash('ხშირი შესვლის მცდელობა. გთხოვთ სცადოთ 15 წუთში.', 'error')
+    #     return render_template('analytics_login.html')
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if ANALYTICS_USERNAME and ANALYTICS_PASSWORD and username == ANALYTICS_USERNAME and password == ANALYTICS_PASSWORD:
+            session['analytics_logged_in'] = True
+            # session.pop('analytics_login_attempts', None)  # Reset attempts on success
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('analytics_dashboard'))
+        else:
+            # Record failed attempt
+            # attempts.append(now)
+            # session['analytics_login_attempts'] = attempts
+            flash('არასწორი მონაცემები')
+    return render_template('analytics_login.html')
+
+@app.route('/analytics')
+@analytics_required
+def analytics_dashboard():
+    """Analytics dashboard - requires analytics login"""
+    
+    # Get analytics data
+    try:
+        analytics_days = int((os.environ.get('ANALYTICS_DAYS') or '30').strip())
+    except Exception:
+        analytics_days = 30
+    analytics_days = max(1, min(3650, analytics_days))
+    analytics_data = get_user_analytics(days=analytics_days)
+    
+    # Process data for display
+    stats = {
+        'total_visits': 0,
+        'unique_sessions': 0,
+        'unique_ips': 0,
+        'authenticated_users': 0,
+        'screen_resolutions': [],
+        'popular_pages': [],
+        'recent_visits': []
+    }
+    
+    if analytics_data:
+        # Calculate statistics
+        sessions = set()
+        ips = set()
+        auth_users = set()
+        pages = {}
+        resolutions = set()
+        
+        for visit in analytics_data:
+            stats['total_visits'] += 1
+            sessions.add(visit['session_id'])
+            if visit['ip_address']:
+                ips.add(visit['ip_address'])
+            if visit['user_id']:
+                auth_users.add(visit['user_id'])
+            if visit['page_url']:
+                pages[visit['page_url']] = pages.get(visit['page_url'], 0) + 1
+            if visit['screen_resolution']:
+                resolutions.add(visit['screen_resolution'])
+        
+        stats['unique_sessions'] = len(sessions)
+        stats['unique_ips'] = len(ips)
+        stats['authenticated_users'] = len(auth_users)
+        stats['screen_resolutions'] = list(resolutions)
+        stats['popular_pages'] = sorted(pages.items(), key=lambda x: x[1], reverse=True)[:10]
+        stats['recent_visits'] = analytics_data[-20:]  # Last 20 visits
+        
+        # Calculate unique IPs in recent visits
+        recent_ips = set()
+        for visit in stats['recent_visits']:
+            if visit['ip_address']:
+                recent_ips.add(visit['ip_address'])
+        stats['unique_ips_recent'] = len(recent_ips)
+        
+        # Calculate detailed IP statistics
+        stats['unique_ips_list'] = []
+        for ip in sorted(ips):
+            ip_visits = [v for v in analytics_data if v['ip_address'] == ip]
+            user_agents = list(set(v['user_agent'] for v in ip_visits if v['user_agent']))
+            screen_resolutions = list(set(v['screen_resolution'] for v in ip_visits if v['screen_resolution']))
+            pages_visited = list(set(v['page_url'] for v in ip_visits if v['page_url']))
+            
+            stats['unique_ips_list'].append({
+                'ip': ip,
+                'visit_count': len(ip_visits),
+                'first_visit': min(v['timestamp'] for v in ip_visits),
+                'last_visit': max(v['timestamp'] for v in ip_visits),
+                'user_agents': user_agents,
+                'screen_resolutions': screen_resolutions,
+                'pages_visited': pages_visited,
+                'visits': sorted(ip_visits, key=lambda x: x['timestamp'], reverse=True)[:10]  # Last 10 visits for this IP
+            })
+    
+    return render_template('admin_analytics.html', stats=stats, analytics_data=analytics_data)
+
+@app.route('/analytics/logout')
+def analytics_logout():
+    """Logout from analytics dashboard"""
+    session.pop('analytics_logged_in', None)
+    return redirect(url_for('analytics_login'))
 
 @app.route('/')
 def index():
@@ -851,9 +1454,234 @@ def index():
         # For debugging on Render
         return f"Error in index route: {str(e)}", 500
 
+@app.route('/debug')
+@dev_only
+def debug():
+    """Debug route to check what's happening on Render"""
+    import os
+    debug_info = {
+        'cwd': os.getcwd(),
+        'projects_dir_exists': os.path.exists(PROJECTS_DIR),
+        'projects_dir': PROJECTS_DIR,
+        'templates_exist': os.path.exists('templates'),
+        'index_template_exists': os.path.exists('templates/index.html'),
+        'database_url_env': os.environ.get('DATABASE_URL', 'NOT SET'),
+        'postgresql_database_url_env': os.environ.get('POSTGRESQL_DATABASE_URL', 'NOT SET'),
+        'db_connection_string_env': os.environ.get('DB_CONNECTION_STRING', 'NOT SET'),
+        'database_url_config': app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET'),
+        'flask_env': os.environ.get('FLASK_ENV', 'NOT SET'),
+        'env_keys': sorted(k for k in os.environ if not k.startswith('_')),
+    }
 
+    # Try to connect to database
+    try:
+        from models import Project
+        project_count = Project.query.count()
+        debug_info['database_connection'] = f'SUCCESS - {project_count} projects'
+    except Exception as e:
+        debug_info['database_connection'] = f'FAILED - {str(e)}'
 
+    return f"Debug info: {debug_info}"
 
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    """Admin panel to view registered users"""
+    users = User.query.all()
+    
+    users_info = []
+    for user in users:
+        users_info.append({
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'verified': user.email_verified,
+            'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else 'N/A'
+        })
+    
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Admin - Users</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .verified { color: green; }
+            .not-verified { color: red; }
+        </style>
+    </head>
+    <body>
+        <h1>დარეგისტრირებული მომხმარებლები</h1>
+        <p>სულ: {} მომხმარებელი</p>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>სახელი</th>
+                <th>Email</th>
+                <th>ვერიფიცირებული</th>
+                <th>რეგისტრაციის თარიღი</th>
+            </tr>
+    """.format(len(users_info))
+    
+    for user in users_info:
+        verified_class = "verified" if user['verified'] else "not-verified"
+        verified_text = "კი ✓" if user['verified'] else "არა ✗"
+        
+        html += f"""
+            <tr>
+                <td>{user['id']}</td>
+                <td>{user['name']}</td>
+                <td>{user['email']}</td>
+                <td class="{verified_class}">{verified_text}</td>
+                <td>{user['created_at']}</td>
+            </tr>
+        """
+    
+    html += """
+        </table>
+        <br>
+        <a href="/">← მთავარ გვერდზე დაბრუნება</a>
+    </body>
+    </html>
+    """
+    
+    return html
+
+# Authentication Routes
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=form.email.data).first()
+        if existing_user:
+            flash('ეს ელ. ფოსტა უკვე რეგისტრირებულია.', 'error')
+            return render_template('auth/register.html', form=form)
+        
+        try:
+            user = User(
+                name=form.name.data,
+                email=form.email.data,
+                email_verified=False
+            )
+            user.set_password(form.password.data)
+            
+            db.session.add(user)
+            db.session.commit()
+            
+            # Send verification email
+            if send_verification_email(user):
+                flash('რეგისტრაცია წარმატებით დასრულდა! გთხოვთ შეამოწმოთ ელ. ფოსტა ვერიფიკაციისთვის.', 'success')
+            else:
+                flash('რეგისტრაცია წარმატებით დასრულდა, მაგრამ ვერიფიკაციის ელ. ფოსტა ვერ გაიგზავნა.', 'warning')
+            
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash('რეგისტრაციის შეცდომა. სცადეთ თავიდან.', 'error')
+            print(f"Registration error: {e}")
+    
+    return render_template('auth/register.html', form=form)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    form = LoginForm()
+    if form.validate_on_submit():
+        # Try email
+        user = User.query.filter_by(email=form.email.data).first()
+        
+        if user and user.check_password(form.password.data):
+            login_user(user)
+            flash('წარმატებით შეხვედით!', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('index'))
+        else:
+            flash('არასწორი ელ. ფოსტა ან პაროლი.', 'error')
+    
+    return render_template('auth/login.html', form=form)
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    flash('თქვენ გახვედით ანგარიშიდან.', 'info')
+    return redirect(url_for('index'))
+
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    user = User.query.filter_by(verification_token=token).first()
+    if user:
+        user.email_verified = True
+        user.verification_token = None
+        db.session.commit()
+        flash('ელ. ფოსტა წარმატებით დადასტურდა! ახლა შეგიძლიათ შეხვიდეთ.', 'success')
+        return redirect(url_for('login'))
+    else:
+        flash('არასწორი ან ვადაგასული ვერიფიკაციის ლინკი.', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    form = ForgotPasswordForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data).first()
+        if user:
+            if send_password_reset_email(user):
+                flash('პაროლის აღდგენის ლინკი გაიგზავნა თქვენს ელ. ფოსტაზე.', 'success')
+            else:
+                flash('ელ. ფოსტის გაგზავნისას მოხდა შეცდომა.', 'error')
+        else:
+            # Security: Don't reveal if email exists
+            flash('თუ ეს ელ. ფოსტა რეგისტრირებულია, მიიღებთ აღდგენის ლინკს.', 'info')
+        return redirect(url_for('login'))
+    
+    return render_template('auth/forgot_password.html', form=form)
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    user = User.query.filter_by(reset_token=token).first()
+    if not user or not user.verify_reset_token(token):
+        flash('არასწორი ან ვადაგასული აღდგენის ლინკი.', 'error')
+        return redirect(url_for('forgot_password'))
+    
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        user.set_password(form.password.data)
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.session.commit()
+        flash('პაროლი წარმატებით შეიცვალა! ახლა შეგიძლიათ შეხვიდეთ.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('auth/reset_password.html', form=form)
+
+@app.route('/resend_verification')
+@login_required
+def resend_verification():
+    if current_user.email_verified:
+        flash('ელ. ფოსტა უკვე დადასტურებულია.', 'info')
+        return redirect(url_for('index'))
+    
+    if send_verification_email(current_user):
+        flash('ვერიფიკაციის ლინკი თავიდან გაიგზავნა.', 'success')
+    else:
+        flash('ელ. ფოსტის გაგზავნისას მოხდა შეცდომა.', 'error')
+    
+    return redirect(url_for('index'))
 
 @app.route('/project/<project_id>')
 def project_detail(project_id):
@@ -861,6 +1689,9 @@ def project_detail(project_id):
     project = next((p for p in projects if p['id'] == project_id), None)
     if not project:
         return 'Project not found', 404
+    
+    # Load comments from database - pass Comment objects directly to template
+    comments = Comment.query.filter_by(project_id=project_id, parent_id=None).order_by(Comment.created_at.desc()).all()
     
     # Read description.txt or use from database
     description = project.get('description', '')
@@ -871,8 +1702,21 @@ def project_detail(project_id):
                 description = clean_description(f.read())
     else:
         description = clean_description(description)
-    return render_template('project_detail.html', project=project, comments=[], description=description, cms_preview=True)
+    return render_template('project_detail.html', project=project, comments=comments, description=description)
 
+@app.route('/debug/project/<project_id>')
+@dev_only
+def debug_project_detail(project_id):
+    """Debug version of project detail to test comments and images"""
+    projects = load_projects()
+    project = next((p for p in projects if p['id'] == project_id), None)
+    if not project:
+        return 'Project not found', 404
+    
+    # Load comments from database
+    comments = Comment.query.filter_by(project_id=project_id, parent_id=None).order_by(Comment.created_at.desc()).all()
+    
+    return render_template('debug_comments.html', project=project, comments=comments)
 
 @app.route('/contact')
 def contact():
@@ -884,7 +1728,211 @@ def about():
     """About page"""
     return render_template('about.html')
 
+@app.route('/add_comment/<project_id>', methods=['POST'])
+@login_required
+def add_comment(project_id):
+    print("\n" + "="*50)
+    print("ADD_COMMENT FUNCTION CALLED!")
+    print(f"Project ID: {project_id}")
+    print(f"Request method: {request.method}")
+    print(f"Request content type: {request.content_type}")
+    print("="*50)
+    # Check if user's email is verified
+    if not current_user.email_verified:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'გთხოვთ დაადასტუროთ ელ. ფოსტა კომენტარის დასაწერად.'})
+        flash('გთხოვთ დაადასტუროთ ელ. ფოსტა კომენტარის დასაწერად.', 'error')
+        return redirect(url_for('project_detail', project_id=project_id))
+    
+    print(f"Add comment called for project {project_id}")
+    print(f"Request form data: {dict(request.form)}")
+    print(f"Request files: {dict(request.files)}")
+    
+    # Check if it's an AJAX request
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    
+    comment_text = request.form.get('comment', '').strip()
+    parent_id = request.form.get('parent_id', '').strip()
+    media_files = request.files.getlist('media')  # Get multiple files
+    
+    print(f"Parsed - comment_text: '{comment_text}', parent_id: '{parent_id}', media_files count: {len(media_files)}")
+    for i, media_file in enumerate(media_files):
+        print(f"Media file {i}: filename={media_file.filename if media_file else None}, content_type={media_file.content_type if media_file else None}")
+    
+    if comment_text or (media_files and any(f.filename for f in media_files)):
+        print("Processing comment or media...")
+        # Handle multiple media files upload to Cloudinary
+        media_urls = []
+        if media_files:
+            for i, media_file in enumerate(media_files):
+                if media_file and media_file.filename and allowed_file(media_file.filename):
+                    print(f"Uploading file {i+1}/{len(media_files)} to Cloudinary: {media_file.filename}")
+                    
+                    # Determine file type
+                    file_extension = media_file.filename.rsplit('.', 1)[1].lower()
+                    is_video = file_extension in {'mp4', 'webm', 'ogg', 'mov', 'avi'}
+                    
+                    try:
+                        upload_params = {
+                            "folder": "comments",
+                            "public_id": f"comment_{int(time.time())}_{i}_{secure_filename(media_file.filename)}"
+                        }
+                        
+                        # Add resource_type for videos
+                        if is_video:
+                            upload_params["resource_type"] = "video"
+                        
+                        upload_result = cloudinary.uploader.upload(media_file, **upload_params)
+                        media_urls.append(upload_result['secure_url'])
+                        print(f"Cloudinary upload successful for file {i+1}: {upload_result['secure_url']}")
+                        print(f"File type: {'Video' if is_video else 'Image'}")
+                        
+                    except Exception as e:
+                        print(f"Failed to upload file {i+1} to Cloudinary: {e}")
+                        print(f"Error details: {type(e).__name__}")
+                        print(f"CRITICAL: Using local fallback - files will be deleted on Render restart!")
+                        
+                        # On production (Render), this is a MAJOR PROBLEM
+                        if os.environ.get('DATABASE_URL'):  # Production check
+                            print("ERROR: Local storage on Render.com will lose files!")
+                            print("Environment check - Cloudinary credentials:")
+                            print(f"  CLOUD_NAME: {'SET' if os.environ.get('CLOUDINARY_CLOUD_NAME') else 'MISSING'}")
+                            print(f"  API_KEY: {'SET' if os.environ.get('CLOUDINARY_API_KEY') else 'MISSING'}")
+                            print(f"  API_SECRET: {'SET' if os.environ.get('CLOUDINARY_API_SECRET') else 'MISSING'}")
+                        
+                        # Fallback to local storage (TEMPORARY for production)
+                        project_path = os.path.join(PROJECTS_DIR, project_id, 'comments')
+                        os.makedirs(project_path, exist_ok=True)
+                        media_filename = secure_filename(media_file.filename)
+                        media_file.save(os.path.join(project_path, media_filename))
+                        local_url = f"/projects/{project_id}/comments/{media_filename}"
+                        media_urls.append(local_url)
+                        print(f"Local storage fallback for file {i+1}: {local_url}")
+                        print(f"WARNING: This file will be deleted on server restart!")
+                else:
+                    if media_file and media_file.filename:
+                        print(f"File {i+1} not allowed: {media_file.filename}")
+                        print(f"Allowed extensions: {ALLOWED_EXTENSIONS}")
+                    else:
+                        print(f"No valid media file {i+1} to upload. media_file={media_file}, filename={media_file.filename if media_file else None}")
+        
+        print(f"Final media_urls: {media_urls}")
+        
+        # Create comment in database
+        if parent_id and parent_id.isdigit():
+            # Reply to existing comment
+            print(f"Creating reply comment with parent_id: {parent_id}")
+            new_comment = Comment(
+                content=comment_text,
+                project_id=project_id,
+                user_id=current_user.id,
+                parent_id=int(parent_id)
+            )
+        else:
+            # New top-level comment
+            print("Creating top-level comment")
+            new_comment = Comment(
+                content=comment_text,
+                project_id=project_id,
+                user_id=current_user.id
+            )
+        
+        # Set multiple media URLs
+        new_comment.set_media_urls(media_urls)
+        
+        print(f"Saving comment to database: content='{new_comment.content}', media_urls='{new_comment.media_urls}'")
+        db.session.add(new_comment)
+        db.session.commit()
+        print(f"Comment saved with ID: {new_comment.id}")
+        
+        if is_ajax:
+            # Return comment data as JSON
+            comment_data = {
+                'success': True,
+                'comment': {
+                    'id': new_comment.id,
+                    'content': new_comment.content,
+                    'author': {
+                        'name': new_comment.author.name if new_comment.author else 'Unknown',
+                        'id': new_comment.author.id if new_comment.author else 0
+                    },
+                    'media_urls': new_comment.get_media_urls(),  # Return array of URLs
+                    'parent_id': new_comment.parent_id,
+                    'created_at': new_comment.created_at.strftime('%Y-%m-%d %H:%M')
+                }
+            }
+            print(f"Returning AJAX response: {comment_data}")
+            return jsonify(comment_data)
+        
+        flash('კომენტარი წარმატებით დაემატა!', 'success')
+    else:
+        print("No comment text or media file provided")
+    
+    return redirect(url_for('project_detail', project_id=project_id))
 
+@app.route('/toggle_like/<int:comment_id>', methods=['POST'])
+@login_required
+def toggle_like(comment_id):
+    # Check if user's email is verified
+    if not current_user.email_verified:
+        return jsonify({'success': False, 'error': 'გთხოვთ დაადასტუროთ ელ. ფოსტა ლაიქისთვის.'})
+    
+    comment = Comment.query.get_or_404(comment_id)
+    existing_like = Like.query.filter_by(user_id=current_user.id, comment_id=comment_id).first()
+    
+    if existing_like:
+        # Unlike - remove the like
+        db.session.delete(existing_like)
+        db.session.commit()
+        is_liked = False
+        message = 'ლაიქი მოიშალა'
+    else:
+        # Like - add new like
+        new_like = Like(user_id=current_user.id, comment_id=comment_id)
+        db.session.add(new_like)
+        db.session.commit()
+        is_liked = True
+        message = 'ლაიქი დაემატა'
+    
+    # Get updated like count
+    like_count = Like.query.filter_by(comment_id=comment_id).count()
+    
+    return jsonify({
+        'success': True,
+        'is_liked': is_liked,
+        'like_count': like_count,
+        'message': message
+    })
+
+@app.route('/delete_comment/<int:comment_id>/<project_id>', methods=['POST'])
+def delete_comment(comment_id, project_id):
+    comment = Comment.query.get_or_404(comment_id)
+    
+    can_delete = session.get('logged_in') or (
+        current_user.is_authenticated and comment.user_id == current_user.id
+    )
+    
+    if not can_delete:
+        flash('თქვენ არ გაქვთ ამ კომენტარის წაშლის უფლება.', 'error')
+        return redirect(url_for('project_detail', project_id=project_id))
+    
+    try:
+        # Delete all nested replies first
+        def delete_replies(comment):
+            for reply in comment.replies:
+                delete_replies(reply)  # Recursively delete nested replies
+                db.session.delete(reply)
+        
+        delete_replies(comment)
+        db.session.delete(comment)
+        db.session.commit()
+        flash('კომენტარი წარმატებით წაიშალა!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('კომენტარის წაშლისას დაფიქსირდა შეცდომა.', 'error')
+        print(f"Error deleting comment: {e}")
+    
+    return redirect(url_for('project_detail', project_id=project_id))
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_login():
@@ -903,15 +1951,38 @@ def admin_login():
         username = request.form['username']
         password = request.form['password']
         if ADMIN_USERNAME and ADMIN_PASSWORD and username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            _login_admin()
-            next_url = request.args.get('next') or request.form.get('next')
-            if next_url and next_url.startswith('/'):
-                return redirect(next_url)
+            session['logged_in'] = True
+            # session.pop('login_attempts', None)  # Reset attempts on success
             return redirect(url_for('admin_panel'))
         else:
-            flash('არასწორი მომხმარებელი ან პაროლი', 'error')
-    return render_template('login.html', next=request.args.get('next', ''))
+            # Record failed attempt
+            # attempts.append(now)
+            # session['login_attempts'] = attempts
+            flash('Invalid credentials')
+    return render_template('login.html')
 
+@app.route('/debug/session')
+@dev_only
+def debug_session():
+    """Debug route to check session status"""
+    return f"""
+    <html>
+    <head><title>Session Debug</title></head>
+    <body>
+    <h1>Session Debug Info</h1>
+    <p><strong>Session data:</strong> {dict(session)}</p>
+    <p><strong>logged_in value:</strong> {session.get('logged_in')}</p>
+    <p><strong>analytics_logged_in value:</strong> {session.get('analytics_logged_in')}</p>
+    <p><strong>login_attempts:</strong> {session.get('login_attempts', [])}</p>
+    <p><strong>analytics_login_attempts:</strong> {session.get('analytics_login_attempts', [])}</p>
+    <p><strong>Current user:</strong> {current_user.is_authenticated if current_user else 'None'}</p>
+    <p><strong>Request remote addr:</strong> {request.remote_addr}</p>
+    <p><strong>Request host:</strong> {request.host}</p>
+    <br>
+    <a href="/admin">Go to Admin Login</a> | <a href="/analytics/login">Go to Analytics Login</a>
+    </body>
+    </html>
+    """
 
 @app.route('/admin/panel')
 @admin_required
@@ -919,30 +1990,6 @@ def admin_panel():
     projects = load_projects()
     home_3d_viewer = get_site_setting(HOME_3D_VIEWER_SETTING_KEY, default='')
     return render_template('admin_panel.html', projects=projects, home_3d_viewer=home_3d_viewer)
-
-
-@app.route('/admin/reorder-projects', methods=['POST'])
-@admin_required
-def admin_reorder_projects():
-    """Save project display order after drag-and-drop (sort_order 0 = first on site)."""
-    data = request.get_json(silent=True) or {}
-    order = data.get('order')
-    if not isinstance(order, list) or not order:
-        return jsonify({'ok': False, 'error': 'order must be a non-empty list'}), 400
-    try:
-        for index, project_id in enumerate(order):
-            project_id = str(project_id).strip()
-            if not project_id:
-                continue
-            row = Project.query.get(project_id)
-            if row:
-                row.sort_order = index
-        db.session.commit()
-        return jsonify({'ok': True, 'count': len(order)})
-    except Exception as e:
-        db.session.rollback()
-        print(f"Reorder error: {e}")
-        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @app.route('/admin/site-settings/home-3d-viewer', methods=['POST'])
@@ -966,32 +2013,227 @@ def admin_set_home_3d_viewer():
 @app.route('/admin/logout')
 def admin_logout():
     """Logout from admin panel"""
+    print(f"DEBUG: Before logout - session: {dict(session)}")
     session.clear()
+    # Clear session cookie
+    response = redirect(url_for('admin_login'))
+    response.set_cookie('session', '', expires=0)
+    print(f"DEBUG: After logout - session: {dict(session)}")
     flash('თქვენ გახვედით ადმინ პანელიდან.', 'info')
-    return redirect(url_for('admin_login'))
+    return response
 
-
-@app.route('/admin/publish', methods=['POST'])
-@admin_required
-def admin_publish():
-    """Export DB to _cloudflare_static/projects_data.js for Cloudflare Pages."""
-    script = os.path.join(os.path.dirname(__file__), 'export_to_static.py')
+@app.route('/export-comments')
+@sync_export_required
+def export_comments_public():
+    """Export all comments from the database (sync token or admin session required in production)."""
     try:
-        result = subprocess.run(
-            [sys.executable, script],
-            capture_output=True,
-            text=True,
-            cwd=os.path.dirname(__file__),
-            timeout=120,
-        )
-        if result.returncode == 0:
-            flash('სტატიკური ექსპორტი წარმატებით დასრულდა. გაუშვი publish.ps1 ან _cloudflare_static-ში git push.', 'success')
-        else:
-            flash(f'ექსპორტის შეცდომა: {result.stderr or result.stdout}', 'error')
+        return jsonify(export_comments_data())
     except Exception as e:
-        flash(f'ექსპორტის შეცდომა: {e}', 'error')
-    return redirect(url_for('admin_panel'))
+        return jsonify({'error': str(e)}), 500
 
+@app.route('/export-projects')
+@sync_export_required
+def export_projects_public():
+    """Export all projects as JSON (sync token or admin session required in production)."""
+    try:
+        projects = load_projects()
+        return jsonify(projects)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/debug/database')
+@dev_only
+def debug_database():
+    """Debug endpoint to check database status and backup"""
+    
+    # Database info
+    db_info = {
+        'ENVIRONMENT': 'PRODUCTION' if os.environ.get('DATABASE_URL') else 'DEVELOPMENT',
+        'DATABASE_URL': 'SET' if os.environ.get('DATABASE_URL') else 'NOT SET (local SQLite)',
+        'SQLALCHEMY_DATABASE_URI': app.config['SQLALCHEMY_DATABASE_URI'][:50] + '...' if len(app.config['SQLALCHEMY_DATABASE_URI']) > 50 else app.config['SQLALCHEMY_DATABASE_URI']
+    }
+    
+    # Count records
+    try:
+        users_count = User.query.count()
+        comments_count = Comment.query.count()
+        likes_count = Like.query.count()
+        
+        db_stats = {
+            'users': users_count,
+            'comments': comments_count,
+            'likes': likes_count,
+            'total_records': users_count + comments_count + likes_count
+        }
+    except Exception as e:
+        db_stats = {'error': str(e)}
+    
+    # Recent activity
+    try:
+        recent_users = User.query.order_by(User.created_at.desc()).limit(3).all()
+        recent_comments = Comment.query.order_by(Comment.created_at.desc()).limit(3).all()
+        
+        recent_activity = {
+            'recent_users': [{'id': u.id, 'name': u.name, 'email': u.email, 'created_at': u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else 'N/A'} for u in recent_users],
+            'recent_comments': [{'id': c.id, 'content': c.content[:50] + '...' if c.content and len(c.content) > 50 else c.content, 'author': c.author.name if c.author else 'Unknown', 'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else 'N/A'} for c in recent_comments]
+        }
+    except Exception as e:
+        recent_activity = {'error': str(e)}
+    
+    debug_data = {
+        'database_info': db_info,
+        'statistics': db_stats,
+        'recent_activity': recent_activity,
+        'timestamp': time.time()
+    }
+    
+    return jsonify(debug_data)
+
+@app.route('/debug/cloudinary')
+@dev_only
+def debug_cloudinary():
+    """Debug endpoint to check Cloudinary configuration"""
+    
+    # Check environment variables
+    env_info = {
+        'CLOUDINARY_CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', 'NOT SET'),
+        'CLOUDINARY_API_KEY': 'SET' if os.environ.get('CLOUDINARY_API_KEY') else 'NOT SET',
+        'CLOUDINARY_API_SECRET': 'SET' if os.environ.get('CLOUDINARY_API_SECRET') else 'NOT SET',
+        'DATABASE_URL': 'SET' if os.environ.get('DATABASE_URL') else 'NOT SET (local SQLite)',
+        'ENVIRONMENT': 'PRODUCTION' if os.environ.get('DATABASE_URL') else 'DEVELOPMENT'
+    }
+    
+    # Test Cloudinary connection
+    cloudinary_status = 'UNKNOWN'
+    cloudinary_error = None
+    
+    try:
+        import cloudinary.api
+        result = cloudinary.api.ping()
+        cloudinary_status = 'CONNECTED'
+        cloudinary_info = result
+    except Exception as e:
+        cloudinary_status = 'ERROR'
+        cloudinary_error = str(e)
+        cloudinary_info = None
+    
+    # Check recent uploads
+    recent_uploads = []
+    try:
+        cloudinary_result = cloudinary.api.resources(
+            type="upload",
+            prefix="comments/",
+            max_results=5
+        )
+        recent_uploads = cloudinary_result.get('resources', [])
+    except Exception as e:
+        recent_uploads = [{'error': str(e)}]
+    
+    debug_data = {
+        'environment': env_info,
+        'cloudinary_status': cloudinary_status,
+        'cloudinary_error': cloudinary_error,
+        'cloudinary_info': cloudinary_info,
+        'recent_uploads': recent_uploads,
+        'timestamp': time.time()
+    }
+    
+    return jsonify(debug_data)
+
+@app.route('/admin/database')
+@admin_required
+def admin_database():
+    """Admin page to view all database contents"""
+    try:
+        from models import User, Comment, Like
+        
+        # Get all data from database
+        users = User.query.order_by(User.created_at.desc()).all()
+        comments = Comment.query.order_by(Comment.created_at.desc()).all()
+        likes = Like.query.order_by(Like.created_at.desc()).all()
+        
+        return render_template('admin_database.html', 
+                             users=users, 
+                             comments=comments, 
+                             likes=likes)
+    except Exception as e:
+        # Return detailed error info for debugging
+        import traceback
+        error_details = traceback.format_exc()
+        return f"""
+        <html>
+        <head><title>Admin Database Error</title></head>
+        <body>
+        <h1>Error in Admin Database Route</h1>
+        <p><strong>Error:</strong> {e}</p>
+        <pre>{error_details}</pre>
+        </body>
+        </html>
+        """, 500
+
+@app.route('/admin/comments')
+@admin_required
+def admin_comments():
+    """Admin page to manage all comments"""
+    try:
+        from models import Comment, Project
+        
+        # Get all comments with related project and user info
+        comments = Comment.query.order_by(Comment.created_at.desc()).all()
+        
+        # Group comments by project for better organization
+        comments_by_project = {}
+        for comment in comments:
+            project_id = comment.project_id
+            if project_id not in comments_by_project:
+                comments_by_project[project_id] = {
+                    'project': Project.query.get(project_id),
+                    'comments': []
+                }
+            comments_by_project[project_id]['comments'].append(comment)
+        
+        return render_template('admin_comments.html', 
+                             comments_by_project=comments_by_project,
+                             total_comments=len(comments))
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return f"""
+        <html>
+        <head><title>Admin Comments Error</title></head>
+        <body>
+        <h1>Error in Admin Comments Route</h1>
+        <p><strong>Error:</strong> {e}</p>
+        <pre>{error_details}</pre>
+        </body>
+        </html>
+        """, 500
+
+@app.route('/admin/delete_comment/<int:comment_id>', methods=['POST'])
+@admin_required
+def admin_delete_comment(comment_id):
+    """Admin route to delete any comment"""
+    try:
+        comment = Comment.query.get_or_404(comment_id)
+        project_id = comment.project_id
+        
+        # Delete all nested replies first
+        def delete_replies(comment):
+            for reply in comment.replies:
+                delete_replies(reply)
+                db.session.delete(reply)
+        
+        delete_replies(comment)
+        db.session.delete(comment)
+        db.session.commit()
+        
+        flash(f'კომენტარი წარმატებით წაიშალა!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('კომენტარის წაშლისას დაფიქსირდა შეცდომა.', 'error')
+        print(f"Error deleting comment: {e}")
+    
+    return redirect(url_for('admin_comments'))
 
 @app.route('/admin/upload', methods=['GET', 'POST'])
 @admin_required
@@ -1007,12 +2249,9 @@ def upload_project():
     if request.method == 'POST':
         print("DEBUG: POST request received")
         try:
-            title = (request.form.get('title') or '').strip()
-            description = (request.form.get('description') or '').strip()
-            viewer3d = request.form.get('viewer3d') or ''
-            if not title or not description:
-                flash('სათაური და აღწერა სავალდებულოა.', 'error')
-                return redirect(url_for('upload_project'))
+            title = request.form['title']
+            description = request.form['description']
+            viewer3d = request.form['viewer3d']
             print(f"DEBUG: Form data received - title: {title}")
                 
             # Continue with processing
@@ -1063,13 +2302,6 @@ def upload_project():
         if not main_image_url and all_images:
             main_image_url = all_images[0]['url']
             main_image_caption = all_images[0]['caption']
-
-        has_file_images = any(
-            f and f.filename for f in request.files.getlist('image_files')
-        )
-        if not main_image_url and not has_file_images:
-            flash('მიუთითე მთავარი სურათის URL ან ატვირთე ფოტო.', 'error')
-            return redirect(url_for('upload_project'))
         
         # Create other_images array (exclude the main image)
         other_images = []
@@ -1378,7 +2610,20 @@ def project_file(project_id, filename):
 def project_3d_viewer_file(project_id, filename):
     return send_from_directory(os.path.join(PROJECTS_DIR, project_id, '3d_viewer'), filename)
 
+@app.route('/check_admin')
+@dev_only
+def check_admin():
+    logged_in = session.get('logged_in', False)
+    admin_ip = session.get('admin_ip')
+    current_ip = request.remote_addr
+    return f"""
+    Logged in: {logged_in}<br>
+    Admin IP: {admin_ip}<br>
+    Current IP: {current_ip}<br>
+    IP Match: {admin_ip == current_ip}
+    """
 
+# --- LIVE SEARCH ROUTE ---
 @app.route('/live_search')
 def live_search():
     q = request.args.get('q', '').lower()
@@ -1403,9 +2648,7 @@ def live_search():
 
 if __name__ == '__main__':
     os.makedirs(PROJECTS_DIR, exist_ok=True)
+    # For production (Render.com), use environment variables
     port = int(os.environ.get('PORT', 5002))
-    debug = os.environ.get('FLASK_DEBUG', '1') == '1'
-    print(f'CMS admin: http://127.0.0.1:{port}/admin')
-    print('Use 127.0.0.1 (not localhost) so the login cookie matches.')
-    # use_reloader=False — avoids session loss / restart during large uploads
-    app.run(debug=debug, host='127.0.0.1', port=port, use_reloader=False)
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    app.run(debug=debug, host='0.0.0.0', port=port)

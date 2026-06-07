@@ -2,12 +2,34 @@
 <html lang="ka">
 <head>
     <meta charset="UTF-8">
-    <title>ადმინ პანელი</title>
+    <title>ადმინ პანელი — ლოკალური CMS</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .sortable-ghost { opacity: 0.4; background: #e7f1ff; }
+        .sortable-drag { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+        .drag-handle {
+            cursor: grab;
+            color: #6c757d;
+            font-size: 1.25rem;
+            user-select: none;
+            touch-action: none;
+        }
+        .drag-handle:active { cursor: grabbing; }
+        #project-sortable tr { transition: background-color 0.15s; }
+        #project-sortable tr:hover { background-color: #f8f9fa; }
+        .order-badge {
+            min-width: 2rem;
+            font-weight: 600;
+        }
+        #reorder-status {
+            min-height: 1.5rem;
+        }
+    </style>
 </head>
 <body>
-<div class="container mt-4">
-    <h1>ადმინ პანელი</h1>
+<div class="container mt-4 mb-5">
+    <h1>ადმინ პანელი <small class="text-muted">(ლოკალური CMS → Cloudflare)</small></h1>
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     {% for category, message in messages %}
@@ -18,66 +40,147 @@
     {% endfor %}
     {% endif %}
     {% endwith %}
-    <div class="mb-3">
-        <a href="/admin/upload" class="btn btn-success">ახალი პროექტის დამატება</a>
-        <a href="/admin/database" class="btn btn-info">📊 მონაცემთა ბაზის ნახვა</a>
-        <a href="/admin/comments" class="btn btn-warning">💬 კომენტარების მართვა</a>
+    <div class="mb-3 d-flex flex-wrap gap-2">
+        <a href="/admin/upload" class="btn btn-success">ახალი პროექტი</a>
+        <form method="post" action="{{ url_for('admin_publish') }}" class="d-inline" onsubmit="return confirm('ექსპორტი _cloudflare_static/projects_data.js-ში?');">
+            <button type="submit" class="btn btn-primary">სტატიკურზე ექსპორტი</button>
+        </form>
+        <a href="/" class="btn btn-outline-secondary" target="_blank">საიტის ნახვა (ლოკალური)</a>
         <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary">გასვლა</a>
+    </div>
+    <div class="alert alert-info">
+        <strong>გამოქვეყნება:</strong> ცვლილებების შემდეგ „სტატიკურზე ექსპორტი“, შემდეგ <code>publish.ps1</code> ან <code>_cloudflare_static</code>-ში <code>git push</code>.
     </div>
 
     <div class="card mb-4">
-        <div class="card-header">
-            <strong>მთავარი გვერდი — 3D Viewer (Global)</strong>
-        </div>
+        <div class="card-header"><strong>მთავარი გვერდი — 3D Viewer</strong></div>
         <div class="card-body">
             <form method="post" action="{{ url_for('admin_set_home_3d_viewer') }}">
                 <div class="mb-3">
                     <label for="home_3d_viewer" class="form-label">3D viewer ლინკი ან embed HTML</label>
-                    <textarea class="form-control" id="home_3d_viewer" name="home_3d_viewer" rows="4" placeholder="მაგ: https://... ან <iframe ...></iframe>">{{ home_3d_viewer|default('') }}</textarea>
-                    <div class="form-text">
-                        დატოვეთ ცარიელი და შეინახეთ, რომ გამორთოთ Homepage 3D viewer.
-                    </div>
+                    <textarea class="form-control" id="home_3d_viewer" name="home_3d_viewer" rows="4">{{ home_3d_viewer|default('') }}</textarea>
                 </div>
                 <button type="submit" class="btn btn-primary">შენახვა</button>
             </form>
         </div>
     </div>
-    <table class="table table-bordered">
-    <thead><tr><th>სათაური</th><th>მთავარი ფოტო</th><th>კატეგორიები</th><th>რიგი</th><th>Latitude</th><th>Longitude</th><th>ქმედება</th></tr></thead>
-        <tbody>
-        {% for project in projects %}
-        <tr>
-            <td>{{ project.title }}</td>
-            <td>{% if project.main_image %}<img src="{{ project.main_image }}" width="80">{% endif %}</td>
-            <td>
-                {% if project.type_categories %}
-                    <strong>ტიპი:</strong>
-                    {% for category in project.type_categories %}
-                        <span class="badge bg-primary me-1">{{ category }}</span>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <strong>პროექტები — საიტზე გამოჩენის რიგი</strong>
+            <span class="text-muted small">გადაიტანე ზემოთ/ქვემოთ ⋮⋮ ღილაკით</span>
+        </div>
+        <div class="card-body p-0">
+            <p class="px-3 pt-3 mb-2 text-muted small">
+                ზედა პროექტი საიტის მთავარ გვერდზე პირველი ჩანს. რიგის შეცვლის შემდეგ ავტომატურად ინახება.
+            </p>
+            <div id="reorder-status" class="px-3"></div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:3rem;"></th>
+                            <th style="width:4rem;">#</th>
+                            <th>სათაური</th>
+                            <th>ფოტო</th>
+                            <th>კატეგორიები</th>
+                            <th>ქმედება</th>
+                        </tr>
+                    </thead>
+                    <tbody id="project-sortable">
+                    {% for project in projects %}
+                        <tr data-id="{{ project.id }}">
+                            <td class="text-center drag-handle" title="გადაიტანე">
+                                <i class="bi bi-grip-vertical"></i>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary order-badge">{{ loop.index }}</span>
+                            </td>
+                            <td>{{ project.title }}</td>
+                            <td>{% if project.main_image %}<img src="{{ project.main_image }}" width="80" alt="" class="rounded">{% endif %}</td>
+                            <td>
+                                {% for category in project.type_categories or [] %}
+                                    <span class="badge bg-primary me-1">{{ category }}</span>
+                                {% endfor %}
+                                {% for period in project.period_categories or [] %}
+                                    <span class="badge bg-secondary me-1">{{ period }}</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-nowrap">
+                                <form method="post" action="/admin/delete/{{ project.id }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('დარწმუნებული ხარ?')">წაშლა</button>
+                                </form>
+                                <a href="/admin/edit/{{ project.id }}" class="btn btn-warning btn-sm">რედაქტირება</a>
+                                <a href="/project/{{ project.id }}" class="btn btn-info btn-sm" target="_blank">ნახვა</a>
+                            </td>
+                        </tr>
                     {% endfor %}
-                    <br>
-                {% endif %}
-                {% if project.period_categories %}
-                    <strong>პერიოდი:</strong>
-                    {% for period in project.period_categories %}
-                        <span class="badge bg-secondary me-1">{{ period }}</span>
-                    {% endfor %}
-                {% endif %}
-            </td>
-            <td>{{ project.latitude|default('') }}</td>
-            <td>{{ project.longitude|default('') }}</td>
-            <td>{{ project.sort_order|default(0) }}</td>
-            <td>
-                <form method="post" action="/admin/delete/{{ project.id }}" style="display:inline;">
-                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('დარწმუნებული ხარ?')">წაშლა</button>
-                </form>
-                <a href="/admin/edit/{{ project.id }}" class="btn btn-warning btn-sm">რედაქტირება</a>
-                <a href="/project/{{ project.id }}" class="btn btn-info btn-sm">ნახვა</a>
-            </td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+                    </tbody>
+                </table>
+            </div>
+            {% if not projects %}
+            <p class="p-3 text-muted mb-0">პროექტები არ არის. <a href="/admin/upload">დაამატე პირველი</a>.</p>
+            {% endif %}
+        </div>
+    </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function() {
+    const tbody = document.getElementById('project-sortable');
+    const statusEl = document.getElementById('reorder-status');
+    if (!tbody || !tbody.children.length) return;
+
+    function updateOrderNumbers() {
+        tbody.querySelectorAll('tr').forEach(function(row, i) {
+            const badge = row.querySelector('.order-badge');
+            if (badge) badge.textContent = i + 1;
+        });
+    }
+
+    function showStatus(message, isError) {
+        if (!statusEl) return;
+        statusEl.innerHTML = '<span class="text-' + (isError ? 'danger' : 'success') + ' small">' + message + '</span>';
+        if (!isError) {
+            setTimeout(function() { statusEl.innerHTML = ''; }, 3000);
+        }
+    }
+
+    function saveOrder() {
+        const order = Array.from(tbody.querySelectorAll('tr[data-id]')).map(function(row) {
+            return row.getAttribute('data-id');
+        });
+        showStatus('<span class="spinner-border spinner-border-sm"></span> ინახება...', false);
+        fetch('{{ url_for("admin_reorder_projects") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order: order })
+        })
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+        .then(function(result) {
+            if (result.ok && result.data.ok) {
+                showStatus('რიგი შენახულია', false);
+            } else {
+                showStatus('შეცდომა: ' + (result.data.error || 'უცნობი'), true);
+            }
+        })
+        .catch(function(err) {
+            showStatus('შეცდომა: ' + err.message, true);
+        });
+    }
+
+    Sortable.create(tbody, {
+        handle: '.drag-handle',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        dragClass: 'sortable-drag',
+        onEnd: function() {
+            updateOrderNumbers();
+            saveOrder();
+        }
+    });
+})();
+</script>
 </body>
 </html>

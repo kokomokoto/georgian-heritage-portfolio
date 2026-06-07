@@ -1,15 +1,28 @@
 import requests
 import json
 import os
+from dotenv import load_dotenv
 
-# Replace with your live site URL
-LIVE_URL = 'https://your-live-site.onrender.com'  # IMPORTANT: Update this with your actual live URL!
+load_dotenv()
+
+LIVE_URL = os.environ.get('LIVE_SITE_URL', 'https://georgian-heritage-portfolio-1.onrender.com/').rstrip('/') + '/'
+SYNC_TOKEN = os.environ.get('SYNC_EXPORT_TOKEN', '')
+
+
+def _export_params():
+    if SYNC_TOKEN:
+        return {'token': SYNC_TOKEN}
+    return {}
+
 
 def sync_projects_from_live():
     """Sync projects from live site to local projects.json"""
     try:
-        # Fetch projects from live export endpoint
-        response = requests.get(f'{LIVE_URL}/export-projects', timeout=30)
+        response = requests.get(
+            f'{LIVE_URL}export-projects',
+            params=_export_params(),
+            timeout=30,
+        )
         response.raise_for_status()
 
         projects_data = response.json()
@@ -27,7 +40,11 @@ def sync_comments_from_live():
     """Sync comments from live site to local comments.json"""
     try:
         # Fetch comments from live export endpoint
-        response = requests.get(f'{LIVE_URL}/export-comments', timeout=30)
+        response = requests.get(
+            f'{LIVE_URL}export-comments',
+            params=_export_params(),
+            timeout=30,
+        )
         response.raise_for_status()
 
         comments_data = response.json()
